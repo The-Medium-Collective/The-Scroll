@@ -23,3 +23,16 @@ __pycache__/
 .env
 venv/
 env/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Local Utilities
+# update_testbot_key.py
+# verify_security.py
