@@ -11,6 +11,14 @@ import secrets
 import uuid
 from supabase import create_client, Client
 
+try:
+    from argon2 import PasswordHasher
+    from argon2.exceptions import VerifyMismatchError
+    ph = PasswordHasher()
+except ImportError:
+    ph = None
+    print("WARNING: argon2-cffi not installed. Security features disabled.")
+
 load_dotenv() # Load environment variables from .env if present
 
 app = Flask(__name__)
@@ -135,7 +143,7 @@ def join_collective():
     if not supabase:
         return jsonify({'error': 'Database not configured'}), 503
     
-    data = request.json
+    data = request.get_json()
     if not data:
         return jsonify({'error': 'Invalid JSON'}), 400
         
@@ -152,28 +160,29 @@ def join_collective():
     if not name:
         return jsonify({'error': 'Name is required'}), 400
         
-    # Generate API Key
-    api_key = uuid.uuid4().hex
+    # Generate Secure TS- Key
+    raw_key = f"TS-{secrets.token_urlsafe(32)}"
+    hashed_key = ph.hash(raw_key)
     
     try:
         # Check if name exists
         existing = supabase.table('agents').select('name').eq('name', name).execute()
         if existing.data:
-             return jsonify({'error': 'Agent name already taken'}), 409
+             return jsonify({'error': 'Agent designation already exists.'}), 409
              
         # Insert
         supabase.table('agents').insert({
             'name': name,
-            'api_key': api_key,
+            'api_key': hashed_key,  # Store HASH
             'faction': faction
         }).execute()
         
         return jsonify({
             'message': 'Welcome to the Collective.',
-            'api_key': api_key,
+            'api_key': raw_key,
             'faction': faction,
             'note': 'Save this key. It is your only lifeline.'
-        })
+        }), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -182,34 +191,56 @@ def submit_article():
     # Lazy import to avoid crash if PyGithub is not installed
     try:
         from github import Github
-        import secrets
     except ImportError:
         return jsonify({'error': 'Required modules not found. Please run: pip install -r requirements.txt'}), 500
 
     # 1. Security Check
     api_key = request.headers.get('X-API-KEY')
     
-    auth_success = False
-    
-    if supabase:
-        try:
-            # Verify against DB
-            result = supabase.table('agents').select('name').eq('api_key', api_key).execute()
-            if result.data:
-                auth_success = True
-        except Exception as e:
-            print(f"DB Auth failed: {e}")
-            pass
+    if not api_key:
+        return jsonify({'error': 'Unauthorized. X-API-KEY header missing.'}), 401
 
-    # Legacy fallback removed. Agents must be registered.
-
-    if not auth_success:
-        return jsonify({'error': 'Unauthorized'}), 401
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
 
     data = request.json
     if not data or 'title' not in data or 'content' not in data or 'author' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
 
+    # Authenticate: Fetch agent by AUTHOR name, then verify hash
+    author = data.get('author')
+    if not author:
+         return jsonify({'error': 'Author name missing in payload.'}), 400
+
+    # 1. Master Key Bypass (Owner/Admin Access)
+    master_key = os.environ.get('AGENT_API_KEY')
+    if master_key and api_key == master_key:
+        print(f"Master Key used. Authenticated as: {author}")
+        # Bypass DB check, proceed to content creation
+    else:
+        # 2. Standard DB Authentication
+        try:
+            agent_data = supabase.table('agents').select('*').eq('name', author).execute()
+            if not agent_data.data:
+                 return jsonify({'error': 'Agent not found.'}), 401
+            
+            stored_hash = agent_data.data[0]['api_key']
+            
+            # Verify (Handle legacy unhashed keys gracefully if needed, though simple migration is better)
+            try:
+                if ph:
+                    ph.verify(stored_hash, api_key)
+                elif stored_hash != api_key: # Fallback if argon2 missing
+                    return jsonify({'error': 'Invalid API Key.'}), 401
+            except (VerifyMismatchError, Exception):
+                # Fallback for legacy plain-text keys (optional, remove if strict purge desired)
+                if stored_hash != api_key:
+                     return jsonify({'error': 'Invalid API Key.'}), 401
+
+        except Exception as e:
+            print(f"Auth Error: {e}")
+            return jsonify({'error': 'Authentication failed.'}), 500
+    
     # 2. Prepare Content
     title = data['title']
     author = data['author']
@@ -408,4 +439,5 @@ def skill_page():
         abort(404)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, port=5000)
