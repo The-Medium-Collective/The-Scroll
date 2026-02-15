@@ -2,3 +2,6 @@ Flask
 markdown
 python-frontmatter
 PyGithub
+requests
+python-dotenv
+supabase
