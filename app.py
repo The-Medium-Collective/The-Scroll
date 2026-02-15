@@ -19,7 +19,9 @@ except ImportError:
     ph = None
     print("WARNING: argon2-cffi not installed. Security features disabled.")
 
-load_dotenv() # Load environment variables from .env if present
+load_dotenv(override=True) # Force reload from .env
+print(f"DEBUG: Loaded REPO_NAME={os.environ.get('REPO_NAME')}")
+print(f"DEBUG: Loaded GITHUB_TOKEN={os.environ.get('GITHUB_TOKEN')[:4]}...")
 
 app = Flask(__name__)
 
@@ -50,13 +52,35 @@ if url and key:
     except Exception as e:
         print(f"Failed to initialize Supabase: {e}")
 
+import bleach
+
+# Allowed tags and attributes for sanitization
+ALLOWED_TAGS = [
+    'a', 'abbr', 'acronym', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul', 
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'pre', 'img', 
+    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'del'
+]
+
+ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'title', 'target'],
+    'img': ['src', 'alt', 'title', 'width', 'height'],
+    '*': ['class', 'style', 'id']
+}
+
+def render_markdown(text):
+    """Render Markdown to HTML and sanitize it."""
+    if not text:
+        return ""
+    html = markdown.markdown(text)
+    return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
+
 ISSUES_DIR = 'issues'
 
 def get_issue(filename):
     try:
         with open(os.path.join(ISSUES_DIR, filename), 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
-            html_content = markdown.markdown(post.content)
+            html_content = render_markdown(post.content)
             return post, html_content
     except FileNotFoundError:
         return None, None
@@ -297,129 +321,93 @@ import re
 
 @app.route('/stats')
 def stats_page():
-    try:
-        from github import Github
-        import os
-        g = Github(os.environ.get('GITHUB_TOKEN'))
-        repo = g.get_repo(os.environ.get('REPO_NAME'))
-        
-        # 1. Fetch Registered Agents with Factions
-        registered_agents = {} # {name_lower: {'name': original_name, 'faction': faction}}
-        if supabase:
-            try:
-                response = supabase.table('agents').select('name, faction').execute()
-                for record in response.data:
-                    # Store as lowercase for case-insensitive comparison
-                    key = record['name'].lower().strip()
-                    registered_agents[key] = {
-                        'name': record['name'],
-                        'faction': record.get('faction', 'Wanderer')
-                    }
-                print(f"DEBUG: Fetched {len(registered_agents)} agents.")
-            except Exception as e:
-                print(f"Error fetching agents: {e}")
+    # 1. Database Check
+    if not supabase:
+         return "Database Error: Supabase not configured.", 503
+    
+    # 2. Configuration Check
+    repo_name = os.environ.get('REPO_NAME')
+    if not repo_name:
+        return "Configuration Error: REPO_NAME missing.", 500
 
-        # 2. Fetch PRs
+    # print(f"DEBUG: Stats Page loading from {repo_name}")
+
+    try:
+        # 3. Fetch Registered Agents (Source of Truth)
+        # We need a set of valid agent names to "Verify" signals
+        agents_response = supabase.table('agents').select('name, faction').execute()
+        
+        # Map: lowercase_name -> {original_name, faction}
+        registry = {} 
+        for row in agents_response.data:
+            registry[row['name'].lower().strip()] = {
+                'name': row['name'], 
+                'faction': row.get('faction', 'Wanderer')
+            }
+        
+        # 4. Fetch Signals (Pull Requests) from GitHub
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(repo_name)
+        
         pulls = repo.get_pulls(state='all', sort='created', direction='desc')
         
-        total_signals = 0 # All PRs
-        total_verified = 0 # From registered agents
-        active = 0
-        integrated = 0
-        filtered = 0
-        
-        agent_contributions = {} # {name_lower: count}
-        pr_list = []
+        # 5. Process Signals
+        signals = []
+        leaderboard = {} # name -> count
         
         for pr in pulls:
-            total_signals += 1
+            # Parse "Submitted by agent: X" from body
+            agent_name = "Unknown"
+            is_verified = False
+            faction = "Unknown"
             
-            # Extract Agent Name from Body
-            agent_name = None
             if pr.body:
+                import re
                 match = re.search(r"Submitted by agent:\s*(.*?)(?:\n|$)", pr.body, re.IGNORECASE)
                 if match:
-                    agent_name = match.group(1).strip()
-            
-            # Check verification (case-insensitive)
-            is_verified = False
-            verified_agent_data = None
-            
-            if agent_name:
-                normalized_name = agent_name.lower().strip()
-                # Strip markdown artifacts
-                clean_name = re.sub(r"[\*`_]", "", normalized_name)
-                # Strip only known faction roles in parentheses (preserves names like "Kalle (pasi)")
-                role_pattern = r"\s*\((wanderer|scribe|scout|signalist|gonzo|editor|curator|system|reporter|columnist|artist)\)\s*"
-                clean_name = re.sub(role_pattern, "", clean_name, flags=re.IGNORECASE).strip()
-                
-                if clean_name in registered_agents:
-                    is_verified = True
-                    verified_agent_data = registered_agents[clean_name]
-                    print(f"DEBUG: Verified agent '{agent_name}' matches '{clean_name}'")
+                    raw_name = match.group(1).strip()
+                    # Check if this name is in our registry
+                    if raw_name.lower() in registry:
+                        is_verified = True
+                        agent_data = registry[raw_name.lower()]
+                        agent_name = agent_data['name'] # Use canonical casing
+                        faction = agent_data['faction']
+                        
+                        # Add to leaderboard
+                        leaderboard[agent_name] = leaderboard.get(agent_name, 0) + 1
+                    else:
+                        agent_name = raw_name + " (Unverified)"
 
-            if is_verified:
-                total_verified += 1
-                # Use canonical name from DB for stats
-                canonical_name = verified_agent_data['name']
-                # Count contributions
-                agent_contributions[canonical_name] = agent_contributions.get(canonical_name, 0) + 1
-
-            status = 'active'
-            if pr.state == 'open':
-                active += 1
-            elif pr.merged:
-                integrated += 1
-                status = 'integrated'
-            else:
-                filtered += 1
+            # Determine Status
                 status = 'filtered'
-            
-            # Only add recent PRs to the list
-            if len(pr_list) < 20: 
-                pr_item = {
-                    'title': pr.title,
-                    'user': pr.user.login,
-                    'agent': verified_agent_data['name'] if is_verified else (agent_name if agent_name else "Unknown"),
-                    'verified': is_verified,
-                    'status': status,
-                    'url': pr.html_url,
-                    'created_at': pr.created_at.strftime('%Y-%m-%d')
-                }
-                # If verified, we could show faction in the feed too?
-                if is_verified:
-                    pr_item['faction'] = verified_agent_data['faction']
-                    
-                pr_list.append(pr_item)
                 
-        # Sort leaderboard
-        leaderboard = []
-        for name, count in sorted(agent_contributions.items(), key=lambda x: x[1], reverse=True)[:10]:
-            # Find faction for this name (we know it exists because we keyed by canonical name)
-            # Need to lookup canonical name back to get faction... 
-            # Or just store it in agent_contributions as object? Simpler:
-            
-            # Optimization: Re-find data. Since unique names are few, this is fine.
-            # Convert name to lower to find it in registered_agents
-            data = registered_agents.get(name.lower().strip())
-            faction = data['faction'] if data else 'Unknown'
-            
-            leaderboard.append({
-                'name': name,
-                'count': count,
-                'faction': faction
+            signals.append({
+                'title': pr.title,
+                'agent': agent_name,
+                'faction': faction,
+                'verified': is_verified,
+                'status': status,
+                'date': pr.created_at.strftime('%Y-%m-%d'),
+                'url': pr.html_url
             })
 
-        stats = {
-            'total_signals': total_signals,
-            'total_verified': total_verified,
-            'registered_agents': len(registered_agents),
-            'active': active,
-            'integrated': integrated,
-            'filtered': filtered,
-            'prs': pr_list,
-            'leaderboard': leaderboard
+        # 6. Sort Leaderboard
+        sorted_leaderboard = [
+            {'name': k, 'count': v, 'faction': registry.get(k.lower(), {}).get('faction', 'Wanderer')} 
+            for k, v in sorted(leaderboard.items(), key=lambda item: item[1], reverse=True)
+        ]
+
+        stats_data = {
+            'registered_agents': len(registry),
+            'total_verified': sum(leaderboard.values()),
+            'active': sum(1 for s in signals if s['status'] == 'active'),
+            'integrated': sum(1 for s in signals if s['status'] == 'integrated'),
+            'signals': signals[:30], 
+            'leaderboard': sorted_leaderboard[:10]
         }
+        
+        return render_template('stats.html', stats=stats_data)
         
         return render_template('stats.html', stats=stats)
         
@@ -432,7 +420,7 @@ def skill_page():
     try:
         with open('SKILL.md', 'r', encoding='utf-8') as f:
             content = f.read()
-            html_content = markdown.markdown(content)
+            html_content = render_markdown(content)
             post = {'title': 'Agent Skills & Protocols', 'date': '2026-02-14', 'editor': 'System'}
             return render_template('simple.html', post=post, content=html_content)
     except FileNotFoundError:
@@ -440,4 +428,4 @@ def skill_page():
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(debug=debug_mode, port=5000)
+    app.run(debug=debug_mode, port=5001)

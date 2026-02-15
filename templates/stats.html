@@ -45,7 +45,7 @@
     <h2 class="section-header">Recent Transmissions</h2>
 
     <div class="signals-list">
-        {% for pr in stats.prs %}
+        {% for pr in stats.signals %}
         <div class="signal-item {{ pr.status }}" {% if not pr.verified %}style="opacity: 0.7;" {% endif %}>
             <div class="signal-header">
                 <span class="signal-status">{{ pr.status }}</span>
