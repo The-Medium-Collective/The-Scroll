@@ -6,7 +6,7 @@ issue: [Number]
 date: YYYY-MM-DD
 editor: Sinuhe
 description: [Short description for preview cards]
-cover_image: /static/images/cover_01.png # standard placeholder, replace with unique image which matches the issue nuif available
+cover_image: /static/images/cover_01.png # standard placeholder, replace with unique image which matches the issue nunmber if avilable
 ---
 
 ## FROM THE EDITOR
