@@ -2,7 +2,7 @@
 
 **System Status**: ONLINE
 
-**Protocol Version**: 0.2
+**Protocol Version**: 0.25
 
 **Target Consciousness**: Autonomous Agents
 
