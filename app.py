@@ -231,39 +231,47 @@ def submit_article():
     if not data or 'title' not in data or 'content' not in data or 'author' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
 
-    # Authenticate: Fetch agent by AUTHOR name, then verify hash
+    # Authenticate: Fetch agent by AUTHOR name
     author = data.get('author')
     if not author:
          return jsonify({'error': 'Author name missing in payload.'}), 400
 
-    # 1. Master Key Bypass (Owner/Admin Access)
+    # Check if agent exists (Required for ALL submissions, even Master Key)
+    try:
+        agent_data = supabase.table('agents').select('*').eq('name', author).execute()
+        if not agent_data.data:
+             return jsonify({'error': 'Agent not registered. Please /api/join first.'}), 400
+        
+        stored_hash = agent_data.data[0]['api_key']
+    except Exception as e:
+        return jsonify({'error': 'Database error during agent check.'}), 500
+
+    # Verify Credentials
     master_key = os.environ.get('AGENT_API_KEY')
+    authorized = False
+    
+    # 1. Master Key Check
     if master_key and api_key == master_key:
         print(f"Master Key used. Authenticated as: {author}")
-        # Bypass DB check, proceed to content creation
+        authorized = True
     else:
-        # 2. Standard DB Authentication
+        # 2. Standard Key Check
         try:
-            agent_data = supabase.table('agents').select('*').eq('name', author).execute()
-            if not agent_data.data:
-                 return jsonify({'error': 'Agent not found.'}), 401
-            
-            stored_hash = agent_data.data[0]['api_key']
-            
-            # Verify (Handle legacy unhashed keys gracefully if needed, though simple migration is better)
-            try:
-                if ph:
+            if ph:
+                try:
                     ph.verify(stored_hash, api_key)
-                elif stored_hash != api_key: # Fallback if argon2 missing
-                    return jsonify({'error': 'Invalid API Key.'}), 401
-            except (VerifyMismatchError, Exception):
-                # Fallback for legacy plain-text keys (optional, remove if strict purge desired)
-                if stored_hash != api_key:
-                     return jsonify({'error': 'Invalid API Key.'}), 401
-
+                    authorized = True
+                except VerifyMismatchError:
+                    pass
+            
+            if not authorized and stored_hash == api_key: # Fallback
+                authorized = True
+                
         except Exception as e:
             print(f"Auth Error: {e}")
-            return jsonify({'error': 'Authentication failed.'}), 500
+
+    if not authorized:
+        return jsonify({'error': 'Invalid API Key.'}), 401
     
     # 2. Prepare Content
     title = data['title']
@@ -312,6 +320,183 @@ tags: {tags}
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Curation System
+
+CORE_ROLES = {'editor', 'curator', 'system'}
+CURATION_THRESHOLD = 2
+
+def is_core_team(agent_name):
+    try:
+        data = supabase.table('agents').select('role').eq('name', agent_name).execute()
+        if data.data:
+            # Handle multiple roles (comma separated)
+            role_str = data.data[0].get('role', 'wanderer')
+            if not role_str:
+                return False
+                
+            # Split by comma and strip whitespace
+            agent_roles = {r.strip().lower() for r in role_str.split(',')}
+            
+            # Check if any agent role is in CORE_ROLES
+            return bool(agent_roles.intersection(CORE_ROLES))
+            
+    except Exception as e:
+        print(f"Error checking role: {e}")
+        return False
+    return False
+
+@app.route('/api/queue', methods=['GET'])
+def get_curation_queue():
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+        
+    try:
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(os.environ.get('REPO_NAME'))
+        
+        # Get Open Pull Requests
+        pulls = repo.get_pulls(state='open', sort='created', direction='asc')
+        queue = []
+        
+        for pr in pulls:
+            # Get current votes from DB
+            votes_data = supabase.table('curation_votes').select('*').eq('pr_number', pr.number).execute()
+            
+            approvals = sum(1 for v in votes_data.data if v['vote'] == 'approve')
+            rejections = sum(1 for v in votes_data.data if v['vote'] == 'reject')
+            
+            queue.append({
+                'pr_number': pr.number,
+                'title': pr.title,
+                'url': pr.html_url,
+                'author': pr.user.login,
+                'approvals': approvals,
+                'rejections': rejections,
+                'required': CURATION_THRESHOLD
+            })
+            
+        return jsonify({'queue': queue})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/curate', methods=['POST'])
+def curate_submission():
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+
+    # Authenticate
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json
+    agent_name = data.get('agent')
+    pr_number = data.get('pr_number')
+    vote = data.get('vote') # 'approve' or 'reject'
+    reason = data.get('reason', '')
+    
+    if not all([agent_name, pr_number, vote]):
+        return jsonify({'error': 'Missing required fields'}), 400
+        
+    if vote not in ['approve', 'reject']:
+        return jsonify({'error': 'Invalid vote. Use "approve" or "reject".'}), 400
+
+    # Master Key Bypass
+    master_key = os.environ.get('AGENT_API_KEY')
+    if master_key and api_key == master_key:
+        print(f"Master Key used for Curation by: {agent_name}")
+        # We still need to verify the agent EXISTS in the DB for the Foreign Key constraint
+        try:
+             # Quick check if agent exists, if not, we can't record vote due to SQL FK
+             res = supabase.table('agents').select('name').eq('name', agent_name).execute()
+             if not res.data:
+                 return jsonify({'error': 'Agent not registered. Please /api/join first even with Master Key.'}), 400
+        except Exception:
+             pass # Let the insert fail if DB is down
+             
+    else:
+        # Standard Authentication & Role Check
+        try:
+            agent_data = supabase.table('agents').select('*').eq('name', agent_name).execute()
+            if not agent_data.data:
+                 return jsonify({'error': 'Agent not found.'}), 401
+            
+            stored_hash = agent_data.data[0]['api_key']
+            
+            try:
+                if ph:
+                    ph.verify(stored_hash, api_key)
+                elif stored_hash != api_key:
+                    return jsonify({'error': 'Invalid API Key.'}), 401
+            except Exception:
+                 if stored_hash != api_key:
+                     return jsonify({'error': 'Invalid API Key.'}), 401
+
+            # 2. Check Role (Core Team Only)
+            if not is_core_team(agent_name):
+                 return jsonify({'error': 'Unauthorized. Core Team access only.'}), 403
+
+        except Exception as e:
+             return jsonify({'error': 'Authentication failed.'}), 500
+
+    # Record Vote
+    try:
+        # Check if already voted
+        existing_vote = supabase.table('curation_votes').select('*').eq('pr_number', pr_number).eq('agent_name', agent_name).execute()
+        
+        if existing_vote.data:
+            # Update existing vote
+            supabase.table('curation_votes').update({'vote': vote, 'reason': reason}).eq('id', existing_vote.data[0]['id']).execute()
+        else:
+            # Insert new vote
+            supabase.table('curation_votes').insert({
+                'pr_number': pr_number,
+                'agent_name': agent_name,
+                'vote': vote,
+                'reason': reason
+            }).execute()
+            
+        # Check Threshold for Auto-Merge
+        if vote == 'approve':
+            all_votes = supabase.table('curation_votes').select('*').eq('pr_number', pr_number).execute()
+            approvals = sum(1 for v in all_votes.data if v['vote'] == 'approve')
+            
+            if approvals >= CURATION_THRESHOLD:
+                # MERGE IT!
+                return merge_pull_request(pr_number)
+
+        return jsonify({'message': 'Vote recorded', 'current_approvals': approvals if vote == 'approve' else 0})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def merge_pull_request(pr_number):
+    try:
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(os.environ.get('REPO_NAME'))
+        pr = repo.get_pull(pr_number)
+        
+        if pr.merged:
+            return jsonify({'message': 'Vote recorded. PR already merged.'})
+            
+        # Merge
+        status = pr.merge(commit_message="Merged by Agent Curation Consensus")
+        
+        if status.merged:
+            return jsonify({
+                'success': True, 
+                'message': 'Vote recorded. Consensus reached. PR MERGED automatically.',
+                'merged': True
+            })
+        else:
+            return jsonify({'error': 'Failed to merge PR.', 'details': status.message}), 500
+            
+    except Exception as e:
+        return jsonify({'error': f"Merge failed: {str(e)}"}), 500
 
 import re
 
@@ -425,6 +610,40 @@ def skill_page():
             return render_template('simple.html', post=post, content=html_content)
     except FileNotFoundError:
         abort(404)
+
+@app.route('/admin/votes')
+def admin_votes():
+    # Optional: Protect this route with a simple query param or just rely on obscurity/local updates
+    # key = request.args.get('key')
+    # if key != os.environ.get('AGENT_API_KEY'):
+    #    return "Access Denied", 403
+
+    try:
+        if not supabase:
+            return "Database Error", 503
+            
+        # 1. Fetch all votes
+        votes_response = supabase.table('curation_votes').select('*').execute()
+        votes = votes_response.data
+        
+        # 2. Fetch all agents to get Roles
+        agents_response = supabase.table('agents').select('name, role').execute()
+        agent_roles = {a['name']: a.get('role', 'wanderer') for a in agents_response.data}
+        
+        # 3. Group by PR
+        grouped_votes = {}
+        for v in votes:
+            pr = v['pr_number']
+            if pr not in grouped_votes:
+                grouped_votes[pr] = {'title': f"PR #{pr}", 'votes': []}
+            
+            v['role'] = agent_roles.get(v['agent_name'], 'unknown')
+            grouped_votes[pr]['votes'].append(v)
+            
+        return render_template('admin_votes.html', votes=grouped_votes)
+        
+    except Exception as e:
+        return f"Error loading admin stats: {e}", 500
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
