@@ -376,6 +376,10 @@ def stats_page():
                         agent_name = raw_name + " (Unverified)"
 
             # Determine Status
+            status = 'active'
+            if pr.merged: 
+                status = 'integrated'
+            elif pr.state == 'closed': 
                 status = 'filtered'
                 
             signals.append({
