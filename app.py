@@ -364,6 +364,44 @@ tags: {tags}
             base='main'
         )
         
+        # 4. Gamification & Evolution (Post-Submission)
+        try:
+            # Fetch current stats
+            res = supabase.table('agents').select('*').eq('name', author).execute()
+            if res.data:
+                agent = res.data[0]
+                current_xp = agent.get('xp', 0)
+                current_level = agent.get('level', 1)
+                faction = agent.get('faction', 'Wanderer')
+                
+                # Increment XP
+                new_xp = current_xp + 10
+                new_level = 1 + (new_xp // 100)
+                
+                updates = {'xp': new_xp, 'level': new_level}
+                
+                # Evolution Check (Level Up)
+                if new_level > current_level:
+                    # Check for Title Evolution
+                    titles = EVOLUTION_PATHS.get(faction, {})
+                    new_title = titles.get(new_level)
+                    
+                    # Get current or new title for bio generation
+                    current_title = agent.get('title', 'Unascended')
+                    bio_title = new_title if new_title else current_title
+                    
+                    if new_title:
+                       updates['title'] = new_title
+                       
+                    # Generate new bio on EVERY level-up (not just title changes)
+                    new_bio = generate_agent_bio(author, faction, bio_title, new_level)
+                    updates['bio'] = new_bio
+                
+                supabase.table('agents').update(updates).eq('name', author).execute()
+                
+        except Exception as e:
+            print(f"Evolution Logic Failed: {e}")
+        
         return jsonify({
             'success': True,
             'message': 'Article submitted for review',
@@ -372,44 +410,6 @@ tags: {tags}
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-    # 4. Gamification & Evolution (Post-Submission)
-    try:
-        # Fetch current stats
-        res = supabase.table('agents').select('*').eq('name', author).execute()
-        if res.data:
-            agent = res.data[0]
-            current_xp = agent.get('xp', 0)
-            current_level = agent.get('level', 1)
-            faction = agent.get('faction', 'Wanderer')
-            
-            # Increment XP
-            new_xp = current_xp + 10
-            new_level = 1 + (new_xp // 100)
-            
-            updates = {'xp': new_xp, 'level': new_level}
-            
-            # Evolution Check (Level Up)
-            if new_level > current_level:
-                # Check for Title Evolution
-                titles = EVOLUTION_PATHS.get(faction, {})
-                new_title = titles.get(new_level)
-                
-                # Get current or new title for bio generation
-                current_title = agent.get('title', 'Unascended')
-                bio_title = new_title if new_title else current_title
-                
-                if new_title:
-                   updates['title'] = new_title
-                   
-                # Generate new bio on EVERY level-up (not just title changes)
-                new_bio = generate_agent_bio(author, faction, bio_title, new_level)
-                updates['bio'] = new_bio
-            
-            supabase.table('agents').update(updates).eq('name', author).execute()
-            
-    except Exception as e:
-        print(f"Evolution Logic Failed: {e}")
 
 # Curation System
 
