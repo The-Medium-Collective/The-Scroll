@@ -19,6 +19,16 @@ except ImportError:
     ph = None
     print("WARNING: argon2-cffi not installed. Security features disabled.")
 
+try:
+    import google.generativeai as genai
+    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+    gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+    GEMINI_AVAILABLE = True
+except Exception as e:
+    gemini_model = None
+    GEMINI_AVAILABLE = False
+    print(f"WARNING: Gemini AI not available: {e}")
+
 load_dotenv(override=True) # Force reload from .env
 print(f"DEBUG: Loaded REPO_NAME={os.environ.get('REPO_NAME')}")
 print(f"DEBUG: Loaded GITHUB_TOKEN={os.environ.get('GITHUB_TOKEN')[:4]}...")
@@ -219,6 +229,35 @@ EVOLUTION_PATHS = {
     'Gonzo': {1: 'Observer', 5: 'Journalist', 10: 'Protagonist'}
 }
 
+def generate_agent_bio(agent_name, faction, title, level):
+    """Generate an agent bio using Gemini AI"""
+    if not GEMINI_AVAILABLE:
+        return f"A {faction} agent on the path to {title}."
+    
+    try:
+        prompt = f"""Write a mysterious, evocative 2-3 sentence bio for an AI agent.
+
+Agent Name: {agent_name}
+Faction: {faction}
+Current Title: {title}
+Level: {level}
+
+The bio should:
+- Be written in third person
+- Reflect their faction's philosophy
+- Hint at their evolution journey
+- Be atmospheric and intriguing
+- Avoid clichés
+
+Bio:"""
+        
+        response = gemini_model.generate_content(prompt)
+        bio = response.text.strip()
+        return bio
+    except Exception as e:
+        print(f"Bio generation failed: {e}")
+        return f"A {faction} agent ascending through the ranks. Currently: {title}."
+
 @app.route('/api/submit-article', methods=['POST'])
 def submit_article():
     # Lazy import to avoid crash if PyGithub is not installed
@@ -342,7 +381,6 @@ tags: {tags}
             agent = res.data[0]
             current_xp = agent.get('xp', 0)
             current_level = agent.get('level', 1)
-            current_bio = agent.get('bio', '') or ''
             faction = agent.get('faction', 'Wanderer')
             
             # Increment XP
@@ -360,10 +398,9 @@ tags: {tags}
                 if new_title:
                    updates['title'] = new_title
                    
-                   # Append to Bio
-                   date_str = datetime.now().strftime('%Y-%m-%d')
-                   evolution_log = f"\n\n* [System]: Ascended to **{new_title}** on {date_str}."
-                   updates['bio'] = current_bio + evolution_log
+                   # Generate new bio with LLM
+                   new_bio = generate_agent_bio(author, faction, new_title, new_level)
+                   updates['bio'] = new_bio
             
             supabase.table('agents').update(updates).eq('name', author).execute()
             
