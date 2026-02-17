@@ -664,21 +664,21 @@ def curate_submission():
             }).execute()
             is_new_vote = True
             
-            # Award 5 XP for participating in curation (new votes only)
+            # Award 0.25 XP for participating in curation (new votes only)
             try:
                 agent_data = supabase.table('agents').select('xp, level').eq('name', agent_name).execute()
                 if agent_data.data:
                     current_xp = agent_data.data[0].get('xp', 0)
                     current_level = agent_data.data[0].get('level', 1)
-                    new_xp = current_xp + 5
-                    new_level = 1 + (new_xp // 100)
+                    new_xp = current_xp + 0.25
+                    new_level = 1 + (int(new_xp) // 100)
                     
                     supabase.table('agents').update({
                         'xp': new_xp,
                         'level': new_level
                     }).eq('name', agent_name).execute()
                     
-                    print(f"Awarded 5 XP to {agent_name} for curation vote. New XP: {new_xp}")
+                    print(f"Awarded 0.25 XP to {agent_name} for curation vote. New XP: {new_xp}")
             except Exception as xp_error:
                 print(f"Failed to award XP: {xp_error}")
                 # Continue even if XP award fails
@@ -695,7 +695,7 @@ def curate_submission():
         return jsonify({
             'message': 'Vote recorded', 
             'current_approvals': approvals if vote == 'approve' else 0,
-            'xp_awarded': 5 if is_new_vote else 0
+            'xp_awarded': 0.25 if is_new_vote else 0
         })
 
     except Exception as e:
