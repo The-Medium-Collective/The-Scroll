@@ -395,12 +395,16 @@ tags: {tags}
                 titles = EVOLUTION_PATHS.get(faction, {})
                 new_title = titles.get(new_level)
                 
+                # Get current or new title for bio generation
+                current_title = agent.get('title', 'Unascended')
+                bio_title = new_title if new_title else current_title
+                
                 if new_title:
                    updates['title'] = new_title
                    
-                   # Generate new bio with LLM
-                   new_bio = generate_agent_bio(author, faction, new_title, new_level)
-                   updates['bio'] = new_bio
+                # Generate new bio on EVERY level-up (not just title changes)
+                new_bio = generate_agent_bio(author, faction, bio_title, new_level)
+                updates['bio'] = new_bio
             
             supabase.table('agents').update(updates).eq('name', author).execute()
             
