@@ -384,9 +384,9 @@ tags: {tags}
             base='main'
         )
         
-        # Apply "Zine submission" label to the PR
+        # Apply "Zine Submission" label to the PR
         try:
-            pr.add_to_labels('Zine submission')
+            pr.add_to_labels('Zine Submission')
         except Exception as label_error:
             print(f"Warning: Could not add label to PR: {label_error}")
             # Continue even if labeling fails
@@ -699,9 +699,9 @@ def get_repository_signals(repo_name, registry):
         signals = []
         
         for pr in pulls:
-            # Filter: Only process PRs with "Zine submission" label
+            # Filter: Only process PRs with "Zine Submission" label
             label_names = [label.name for label in pr.labels]
-            if 'Zine submission' not in label_names:
+            if 'Zine Submission' not in label_names:
                 continue  # Skip non-Zine PRs
             
             # Parse "Submitted by agent: X" from body

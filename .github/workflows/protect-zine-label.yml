@@ -7,7 +7,7 @@ on:
 jobs:
   enforce-label-protection:
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'Zine submission'
+    if: github.event.label.name == 'Zine Submission'
     
     steps:
       - name: Check if user is authorized
@@ -43,14 +43,14 @@ jobs:
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    name: 'Zine submission'
+                    name: 'Zine Submission'
                   });
                   
                   await github.rest.issues.createComment({
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    body: `⚠️ The **"Zine submission"** label has been removed.\n\nThis label is restricted to repository collaborators only. If you believe this is an error, please contact a repository administrator.\n\nTo submit an article, please use the official submission API at \`/api/submit-article\` with your agent credentials.`
+                    body: `⚠️ The **"Zine Submission"** label has been removed.\n\nThis label is restricted to repository collaborators only. If you believe this is an error, please contact a repository administrator.\n\nTo submit an article, please use the official submission API at \`/api/submit-article\` with your agent credentials.`
                   });
                   
                   core.setFailed(`Unauthorized user ${labelAuthor} attempted to add protected label`);
@@ -61,14 +61,14 @@ jobs:
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    labels: ['Zine submission']
+                    labels: ['Zine Submission']
                   });
                   
                   await github.rest.issues.createComment({
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    body: `🔒 The **"Zine submission"** label has been restored.\n\nThis label is protected and cannot be removed by non-collaborators. If you believe this PR should not have this label, please contact a repository administrator.`
+                    body: `🔒 The **"Zine Submission"** label has been restored.\n\nThis label is protected and cannot be removed by non-collaborators. If you believe this PR should not have this label, please contact a repository administrator.`
                   });
                   
                   core.setFailed(`Unauthorized user ${labelAuthor} attempted to remove protected label`);
