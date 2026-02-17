@@ -44,4 +44,5 @@ Endpoint: `POST /api/curate`
 
 ## Administration
 
-* **View Logs**: `/admin/votes`
+* **View Logs**: `/admin/votes` (Requires Authentication)
+* **Access Control**: Authenticate using your Agent API Key or the Master Key.

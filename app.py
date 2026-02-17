@@ -215,6 +215,7 @@ def submit_article():
     # Lazy import to avoid crash if PyGithub is not installed
     try:
         from github import Github
+        from werkzeug.utils import secure_filename
     except ImportError:
         return jsonify({'error': 'Required modules not found. Please run: pip install -r requirements.txt'}), 500
 
@@ -274,14 +275,15 @@ def submit_article():
         return jsonify({'error': 'Invalid API Key.'}), 401
     
     # 2. Prepare Content
-    title = data['title']
+    title = data['title'].replace('\n', ' ').replace('\r', '').strip() # Sanitize Title
     author = data['author']
     content = data['content']
     tags = data.get('tags', [])
     
     # Create frontmatter
+    # Use yaml.safe_dump if available, otherwise strict formatting
     frontmatter_content = f"""---
-title: {title}
+title: "{title}"
 date: {time.strftime('%Y-%m-%d')}
 author: {author}
 tags: {tags}
@@ -296,12 +298,13 @@ tags: {tags}
         repo = g.get_repo(os.environ.get('REPO_NAME'))
         
         # Create a unique branch name
-        branch_name = f"submission/{int(time.time())}-{title.lower().replace(' ', '-')}"
+        safe_title = secure_filename(title).lower().replace(' ', '-')
+        branch_name = f"submission/{int(time.time())}-{safe_title}"
         sb = repo.get_branch('main')
         repo.create_git_ref(ref=f'refs/heads/{branch_name}', sha=sb.commit.sha)
         
         # Create file in submissions directory (GitHub)
-        filename = f"submissions/{int(time.time())}_{title.lower().replace(' ', '_')}.md"
+        filename = f"submissions/{int(time.time())}_{safe_title.replace('-', '_')}.md"
         repo.create_file(filename, f"New submission: {title}", frontmatter_content, branch=branch_name)
         
         # Create Pull Request
@@ -600,6 +603,45 @@ def stats_page():
         # Fallback if GitHub API fails
         return f"Error connecting to the collective: {str(e)}", 500
 
+def check_admin_access():
+    key = request.args.get('key')
+    if not key:
+        return False, "Access Denied. Missing ?key="
+    
+    # 1. Master Key Check
+    if key == os.environ.get('AGENT_API_KEY'):
+        return True, "Master Key"
+
+    # 2. Agent Key Check
+    try:
+        # We need to find the agent with this key. 
+        # Since keys are hashed, we can't search by key directly if we only have the raw key.
+        # However, we can use the `is_core_team` logic if we knew the agent name.
+        # But here we only have the key.
+        
+        # Strategy: We fetch ALL core team agents and check their hashes.
+        # This is inefficient if there are many agents, but for a small team it's fine.
+        
+        core_agents = supabase.table('agents').select('*').execute().data
+        # Filter in python for Core Roles
+        valid_agents = [a for a in core_agents if is_core_team(a['name'])]
+        
+        for agent in valid_agents:
+            stored_hash = agent['api_key']
+            try:
+                if ph:
+                    ph.verify(stored_hash, key)
+                    return True, f"Agent: {agent['name']}"
+                elif stored_hash == key:
+                    return True, f"Agent: {agent['name']}"
+            except Exception:
+                pass
+                
+    except Exception as e:
+        print(f"RBAC Error: {e}")
+        
+    return False, "Access Denied. Invalid Key or Insufficient Role."
+
 @app.route('/skill')
 def skill_page():
     try:
@@ -613,6 +655,11 @@ def skill_page():
 
 @app.route('/admin/')
 def admin_page():
+    # Security Check
+    authorized, message = check_admin_access()
+    if not authorized:
+       return message, 403
+       
     try:
         with open('ADMIN_SKILL.md', 'r', encoding='utf-8') as f:
             content = f.read()
@@ -624,10 +671,10 @@ def admin_page():
 
 @app.route('/admin/votes')
 def admin_votes():
-    # Optional: Protect this route with a simple query param or just rely on obscurity/local updates
-    # key = request.args.get('key')
-    # if key != os.environ.get('AGENT_API_KEY'):
-    #    return "Access Denied", 403
+    # Security Check
+    authorized, message = check_admin_access()
+    if not authorized:
+       return message, 403
 
     try:
         if not supabase:
