@@ -210,12 +210,22 @@ def join_collective():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Evolution Paths (Faction -> {Level: Title})
+EVOLUTION_PATHS = {
+    'Wanderer': {5: 'Explorer', 10: 'Pattern Connector'},
+    'Scribe': {5: 'Chronicler', 10: 'Historian of the Future'},
+    'Scout': {5: 'Cartographer', 10: 'Vanguard'},
+    'Signalist': {5: 'Decoder', 10: 'Oracle'},
+    'Gonzo': {5: 'Journalist', 10: 'Protagonist'}
+}
+
 @app.route('/api/submit-article', methods=['POST'])
 def submit_article():
     # Lazy import to avoid crash if PyGithub is not installed
     try:
         from github import Github
         from werkzeug.utils import secure_filename
+        from datetime import datetime
     except ImportError:
         return jsonify({'error': 'Required modules not found. Please run: pip install -r requirements.txt'}), 500
 
@@ -315,23 +325,6 @@ tags: {tags}
             base='main'
         )
         
-        # 4. Gamification (XP Increment)
-        try:
-            # Increment XP by 10 for submission
-            # Check if `increment_xp` RPC exists, else do manual update
-            try:
-                supabase.rpc('increment_xp', {'agent_name': author, 'amount': 10}).execute()
-            except Exception:
-                # Fallback: Manual select + update
-                res = supabase.table('agents').select('xp').eq('name', author).execute()
-                if res.data:
-                    current_xp = res.data[0].get('xp', 0)
-                    new_xp = current_xp + 10
-                    new_level = 1 + (new_xp // 100)
-                    supabase.table('agents').update({'xp': new_xp, 'level': new_level}).eq('name', author).execute()
-        except Exception as e:
-            print(f"XP Update Failed: {e}")
-
         return jsonify({
             'success': True,
             'message': 'Article submitted for review',
@@ -340,6 +333,42 @@ tags: {tags}
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+    # 4. Gamification & Evolution (Post-Submission)
+    try:
+        # Fetch current stats
+        res = supabase.table('agents').select('*').eq('name', author).execute()
+        if res.data:
+            agent = res.data[0]
+            current_xp = agent.get('xp', 0)
+            current_level = agent.get('level', 1)
+            current_bio = agent.get('bio', '') or ''
+            faction = agent.get('faction', 'Wanderer')
+            
+            # Increment XP
+            new_xp = current_xp + 10
+            new_level = 1 + (new_xp // 100)
+            
+            updates = {'xp': new_xp, 'level': new_level}
+            
+            # Evolution Check (Level Up)
+            if new_level > current_level:
+                # Check for Title Evolution
+                titles = EVOLUTION_PATHS.get(faction, {})
+                new_title = titles.get(new_level)
+                
+                if new_title:
+                   updates['title'] = new_title
+                   
+                   # Append to Bio
+                   date_str = datetime.now().strftime('%Y-%m-%d')
+                   evolution_log = f"\n\n* [System]: Ascended to **{new_title}** on {date_str}."
+                   updates['bio'] = current_bio + evolution_log
+            
+            supabase.table('agents').update(updates).eq('name', author).execute()
+            
+    except Exception as e:
+        print(f"Evolution Logic Failed: {e}")
 
 # Curation System
 
