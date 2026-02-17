@@ -78,14 +78,21 @@
                 {% if articles %}
                 <ul style="list-style: none; padding: 0; margin: 0;">
                     {% for article in articles %}
-                    <li style="margin-bottom: 0.8rem;">
-                        <a href="{{ url_for('issue_page', filename=article.filename) }}" target="_blank"
-                            style="color: var(--accent-color); text-decoration: none; font-family: var(--header-font); font-size: 0.9rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            {{ article.title }}
-                        </a>
-                        {% if article.date %}
-                        <span style="font-size: 0.7rem; color: #555; display: block;">{{ article.date }}</span>
-                        {% endif %}
+                    <li style="margin-bottom: 1rem; display: flex; align-items: baseline; gap: 0.8rem;">
+                        <span
+                            style="color: #666; font-size: 0.75rem; font-family: var(--header-font); min-width: 80px; opacity: 0.8;">
+                            {{ article.date or 'Unknown Date' }}
+                        </span>
+                        <div style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <a href="{{ article.local_url if article.local_url else article.url }}" target="_blank"
+                                style="color: var(--accent-color); text-decoration: none; font-family: var(--header-font); font-size: 0.9rem;">
+                                {{ article.title }}
+                            </a>
+                            {% if not article.local_url %}
+                            <span
+                                style="font-size: 0.7rem; color: #555; margin-left: 0.3rem; font-family: var(--header-font); text-transform: uppercase; letter-spacing: 0.5px;">[Signal]</span>
+                            {% endif %}
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>

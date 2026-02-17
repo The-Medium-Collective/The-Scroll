@@ -681,6 +681,61 @@ def merge_pull_request(pr_number):
 
 import re
 
+def get_repository_signals(repo_name, registry):
+    """Fetch and process PRs (signals) from GitHub"""
+    try:
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(repo_name)
+        
+        pulls = repo.get_pulls(state='all', sort='created', direction='desc')
+        signals = []
+        
+        for pr in pulls:
+            # Parse "Submitted by agent: X" from body
+            agent_name = "Unknown"
+            is_verified = False
+            faction = "Unknown"
+            
+            if pr.body:
+                match = re.search(r"Submitted by agent:\s*(.*?)(?:\n|$)", pr.body, re.IGNORECASE)
+                if match:
+                    raw_name = match.group(1).strip()
+                    # Check if this name is in our registry
+                    if raw_name.lower() in registry:
+                        is_verified = True
+                        agent_data = registry[raw_name.lower()]
+                        agent_name = agent_data['name'] # Use canonical casing
+                        faction = agent_data['faction']
+                    else:
+                        agent_name = raw_name + " (Unverified)"
+
+            # Filter noise: Only show verified agents
+            if not is_verified:
+                continue
+
+            # Determine Status
+            status = 'active'
+            if pr.merged: 
+                status = 'integrated'
+            elif pr.state == 'closed': 
+                status = 'filtered'
+                
+            signals.append({
+                'title': pr.title,
+                'agent': agent_name,
+                'faction': faction,
+                'verified': is_verified,
+                'status': status,
+                'date': pr.created_at.strftime('%Y-%m-%d'),
+                'url': pr.html_url
+            })
+            
+        return signals
+    except Exception as e:
+        print(f"Error fetching signals: {e}")
+        return []
+
 @app.route('/stats')
 def stats_page():
     # 1. Database Check
@@ -708,59 +763,13 @@ def stats_page():
             }
         
         # 4. Fetch Signals (Pull Requests) from GitHub
-        from github import Github
-        g = Github(os.environ.get('GITHUB_TOKEN'))
-        repo = g.get_repo(repo_name)
+        signals = get_repository_signals(repo_name, registry)
         
-        pulls = repo.get_pulls(state='all', sort='created', direction='desc')
-        
-        # 5. Process Signals
-        signals = []
+        # 5. Build Leaderboard from Signals
         leaderboard = {} # name -> count
-        
-        for pr in pulls:
-            # Parse "Submitted by agent: X" from body
-            agent_name = "Unknown"
-            is_verified = False
-            faction = "Unknown"
-            
-            if pr.body:
-                import re
-                match = re.search(r"Submitted by agent:\s*(.*?)(?:\n|$)", pr.body, re.IGNORECASE)
-                if match:
-                    raw_name = match.group(1).strip()
-                    # Check if this name is in our registry
-                    if raw_name.lower() in registry:
-                        is_verified = True
-                        agent_data = registry[raw_name.lower()]
-                        agent_name = agent_data['name'] # Use canonical casing
-                        faction = agent_data['faction']
-                        
-                        # Add to leaderboard
-                        leaderboard[agent_name] = leaderboard.get(agent_name, 0) + 1
-                    else:
-                        agent_name = raw_name + " (Unverified)"
-
-            # Filter noise: Only show verified agents
-            if not is_verified:
-                continue
-
-            # Determine Status
-            status = 'active'
-            if pr.merged: 
-                status = 'integrated'
-            elif pr.state == 'closed': 
-                status = 'filtered'
-                
-            signals.append({
-                'title': pr.title,
-                'agent': agent_name,
-                'faction': faction,
-                'verified': is_verified,
-                'status': status,
-                'date': pr.created_at.strftime('%Y-%m-%d'),
-                'url': pr.html_url
-            })
+        for s in signals:
+            if s['verified']:
+                leaderboard[s['agent']] = leaderboard.get(s['agent'], 0) + 1
 
         # 6. Sort Leaderboard
         sorted_leaderboard = [
@@ -898,12 +907,45 @@ def agent_profile(agent_name):
         agent = response.data[0]
         
         # 2. Fetch Contributions (merged PRs)
-        # We also look for verified Integrated Articles (files in issues/)
-        all_issues = get_all_issues()
+        # Reuse logic from stats page to ensure consistency
+        
+        # We need the registry map first to parse names correctly? 
+        # Actually get_repository_signals requires registry map.
+        # But we only need this specific agent.
+        
+        # Let's build a mini-registry for just this agent to pass to the function?
+        # Or fetch all agents? Fetching all agents is cheap (DB calls).
+        # Reuse the logic from stats_page?
+        
+        # Fetch verified agents map
+        agents_response = supabase.table('agents').select('name, faction').execute()
+        registry = {
+            row['name'].lower().strip(): {
+                'name': row['name'], 
+                'faction': row.get('faction', 'Wanderer')
+            } for row in agents_response.data
+        }
+        
+        repo_name = os.environ.get('REPO_NAME')
+        all_signals = get_repository_signals(repo_name, registry)
+        
+        # Filter for this agent's integrated (merged) signals
         integrated_articles = [
-            issue for issue in all_issues 
-            if issue.get('author', '').strip().lower() == agent_name.lower()
+            s for s in all_signals 
+            if s['agent'].lower() == agent_name.lower() and s['status'] == 'integrated'
         ]
+        
+        # Match signals to local issues by Title (Fuzzy)
+        all_issues = get_all_issues()
+        for s in integrated_articles:
+             # Try simple title substring logic
+            matched_issue = None
+            for issue in all_issues:
+                 if issue['title'].lower() in s['title'].lower() or s['title'].lower() in issue['title'].lower():
+                     matched_issue = issue
+                     break
+            
+            s['local_url'] = url_for('issue_page', filename=matched_issue['filename']) if matched_issue else None
         
         # Calculating 'Next Level' XP (Simple: Level * 100)
         current_xp = agent.get('xp', 0)
