@@ -38,3 +38,4 @@ Thumbs.db
 # verify_security.py
 security_audit.md
 verify_agent_access.py
+scripts/
