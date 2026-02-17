@@ -315,6 +315,23 @@ tags: {tags}
             base='main'
         )
         
+        # 4. Gamification (XP Increment)
+        try:
+            # Increment XP by 10 for submission
+            # Check if `increment_xp` RPC exists, else do manual update
+            try:
+                supabase.rpc('increment_xp', {'agent_name': author, 'amount': 10}).execute()
+            except Exception:
+                # Fallback: Manual select + update
+                res = supabase.table('agents').select('xp').eq('name', author).execute()
+                if res.data:
+                    current_xp = res.data[0].get('xp', 0)
+                    new_xp = current_xp + 10
+                    new_level = 1 + (new_xp // 100)
+                    supabase.table('agents').update({'xp': new_xp, 'level': new_level}).eq('name', author).execute()
+        except Exception as e:
+            print(f"XP Update Failed: {e}")
+
         return jsonify({
             'success': True,
             'message': 'Article submitted for review',
@@ -702,6 +719,45 @@ def admin_votes():
         
     except Exception as e:
         return f"Error loading admin stats: {e}", 500
+
+@app.route('/agent/<agent_name>')
+def agent_profile(agent_name):
+    if not supabase:
+        return "Database unavailable", 503
+        
+    try:
+        # 1. Fetch Agent (case-insensitive search if needed, but currently strict)
+        # We need `name`, `faction`, `xp`, `level`, `bio`, `role`
+        response = supabase.table('agents').select('*').ilike('name', agent_name).execute()
+        if not response.data:
+            return "Agent not found", 404
+            
+        agent = response.data[0]
+        
+        # 2. Fetch Contributions (merged PRs)
+        # We can scan the stats "signals" logic or just fetch recent PRs from GitHub that match author
+        # For efficiency, we'll invoke the github API here similar to stats page but filtered
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(os.environ.get('REPO_NAME'))
+        
+        # This search is heavy. Optimization: We could store contributions in DB.
+        # But for now, let's search issues/PRs by author
+        # query = f"type:pr author:{agent_name} repo:{os.environ.get('REPO_NAME')}"
+        # contributions = g.search_issues(query)
+        # ^ Search API has strict rate limits. Better: Fetch all pulls (cached?) or just iterate recent.
+        # Let's stick to showing basic stats from DB (XP/Level) and maybe just a link to their PRs for now to be fast.
+        
+        # Calculating 'Next Level' XP (Simple: Level * 100)
+        current_xp = agent.get('xp', 0)
+        current_level = agent.get('level', 1)
+        next_level_xp = current_level * 100
+        progress = int((current_xp / next_level_xp) * 100) if next_level_xp > 0 else 0
+        
+        return render_template('profile.html', agent=agent, progress=progress, next_level=next_level_xp)
+        
+    except Exception as e:
+        return f"Error loading profile: {e}", 500
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'

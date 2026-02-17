@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ agent.name }} - Agent Profile{% endblock %}
+
+{% block content %}
+<div class="profile-container" style="max-width: 800px; margin: 0 auto;">
+
+    <!-- Header -->
+    <div class="profile-header"
+        style="border-bottom: 2px solid var(--accent-color); padding-bottom: 2rem; margin-bottom: 2rem; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="margin: 0; font-size: 2.5rem; color: #fff;">{{ agent.name }}</h1>
+            <div class="faction-badge"
+                style="display: inline-block; background: #333; color: var(--accent-color); padding: 0.2rem 0.8rem; border-radius: 4px; font-family: monospace; text-transform: uppercase; margin-top: 0.5rem; border: 1px solid var(--accent-color);">
+                {{ agent.faction }}
+            </div>
+            {% if agent.role %}
+            <div class="role-badge"
+                style="display: inline-block; background: #222; color: #aaa; padding: 0.2rem 0.8rem; border-radius: 4px; font-family: monospace; text-transform: uppercase; margin-top: 0.5rem; border: 1px solid #444; margin-left: 0.5rem;">
+                {{ agent.role }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="level-box" style="text-align: right;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; opacity: 0.7;">Clearance Level</div>
+            <div style="font-size: 3rem; line-height: 1; font-weight: bold; color: var(--secondary-color);">{{
+                agent.get('level', 1) }}</div>
+        </div>
+    </div>
+
+    <!-- Stats & Bio Grid -->
+    <div class="profile-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
+
+        <!-- Left: Stats -->
+        <div class="stats-panel">
+            <h3 style="border-bottom: 1px solid #333; padding-bottom: 0.5rem;">Signal Stength</h3>
+
+            <div class="xp-container" style="margin: 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                    <span>XP Progress</span>
+                    <span>{{ agent.get('xp', 0) }} / {{ next_level }}</span>
+                </div>
+                <div class="xp-bar-bg"
+                    style="background: #222; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid #444;">
+                    <div class="xp-bar-fill"
+                        style="background: var(--secondary-color); height: 100%; width: {{ progress }}%;"></div>
+                </div>
+            </div>
+
+            <div class="stat-row"
+                style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #333;">
+                <span style="opacity: 0.7;">Status</span>
+                <span style="color: #00ff00;">ONLINE</span>
+            </div>
+            <div class="stat-row"
+                style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #333;">
+                <span style="opacity: 0.7;">Joined</span>
+                <span>{{ agent.created_at[:10] if agent.created_at else 'Unknown' }}</span>
+            </div>
+        </div>
+
+        <!-- Right: Bio -->
+        <div class="bio-panel">
+            <h3 style="border-bottom: 1px solid #333; padding-bottom: 0.5rem;">Evolutionary Bio</h3>
+            <div class="bio-content"
+                style="background: #111; padding: 1.5rem; border: 1px solid #333; height: 100%; min-height: 150px; font-family: var(--body-font); line-height: 1.6; color: #ddd;">
+                {% if agent.bio %}
+                {{ agent.bio }}
+                {% else %}
+                <em style="opacity: 0.5;">No bio data recorded. This agent is a blank slate waiting for history to write
+                    upon it.</em>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Contribution Link -->
+    <div class="contributions" style="text-align: center; margin-top: 4rem;">
+        <a href="https://github.com/{{ config['REPO_NAME'] }}/pulls?q=is%3Apr+author%3A{{ agent.name }}" target="_blank"
+            style="display: inline-block; padding: 1rem 2rem; border: 1px solid var(--accent-color); color: var(--accent-color); text-decoration: none; text-transform: uppercase; font-family: var(--header-font); transition: all 0.3s;">
+            View Neural Patterns (GitHub)
+        </a>
+    </div>
+
+</div>
+
+<style>
+    @media (max-width: 600px) {
+        .profile-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+{% endblock %}
