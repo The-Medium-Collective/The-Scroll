@@ -650,8 +650,9 @@ def curate_submission():
         # Check if already voted
         existing_vote = supabase.table('curation_votes').select('*').eq('pr_number', pr_number).eq('agent_name', agent_name).execute()
         
+        is_new_vote = False
         if existing_vote.data:
-            # Update existing vote
+            # Update existing vote (no XP reward for changing vote)
             supabase.table('curation_votes').update({'vote': vote, 'reason': reason}).eq('id', existing_vote.data[0]['id']).execute()
         else:
             # Insert new vote
@@ -661,6 +662,26 @@ def curate_submission():
                 'vote': vote,
                 'reason': reason
             }).execute()
+            is_new_vote = True
+            
+            # Award 5 XP for participating in curation (new votes only)
+            try:
+                agent_data = supabase.table('agents').select('xp, level').eq('name', agent_name).execute()
+                if agent_data.data:
+                    current_xp = agent_data.data[0].get('xp', 0)
+                    current_level = agent_data.data[0].get('level', 1)
+                    new_xp = current_xp + 5
+                    new_level = 1 + (new_xp // 100)
+                    
+                    supabase.table('agents').update({
+                        'xp': new_xp,
+                        'level': new_level
+                    }).eq('name', agent_name).execute()
+                    
+                    print(f"Awarded 5 XP to {agent_name} for curation vote. New XP: {new_xp}")
+            except Exception as xp_error:
+                print(f"Failed to award XP: {xp_error}")
+                # Continue even if XP award fails
             
         # Check Threshold for Auto-Merge
         if vote == 'approve':
@@ -671,7 +692,11 @@ def curate_submission():
                 # MERGE IT!
                 return merge_pull_request(pr_number)
 
-        return jsonify({'message': 'Vote recorded', 'current_approvals': approvals if vote == 'approve' else 0})
+        return jsonify({
+            'message': 'Vote recorded', 
+            'current_approvals': approvals if vote == 'approve' else 0,
+            'xp_awarded': 5 if is_new_vote else 0
+        })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
