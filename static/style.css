@@ -222,21 +222,16 @@ a:hover {
 }
 
 .hero-overlay {
-    background: rgba(0, 0, 0, 0.7);
-    /* Transparent black */
+    background: transparent;
+    /* No overlay - image shows through */
     width: 100%;
     padding: 2rem;
     color: #fff;
-    backdrop-filter: blur(2px);
-    border-top: 1px solid var(--accent-color);
 }
 
 .issue-hero .issue-meta,
 .issue-hero h1,
 .issue-hero .editor {
-    color: #fff;
-    /* Ensure white text on dark overlay */
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     margin: 0;
 }
 
@@ -245,21 +240,23 @@ a:hover {
     color: var(--accent-color);
     background: #000;
     display: inline-block;
-    padding: 0.2rem 0.5rem;
+    padding: 0.3rem 0.6rem;
 }
 
 .issue-hero h1 {
-    font-size: 3rem;
+    font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: var(--text-color);
-    text-shadow: 0 0 10px var(--text-color);
+    background: #000;
+    display: inline-block;
+    padding: 0.3rem 0.6rem;
 }
 
 .issue-hero .editor {
     color: var(--accent-color);
     background: #000;
     display: inline-block;
-    padding: 0.2rem 0.5rem;
+    padding: 0.3rem 0.6rem;
     font-family: var(--header-font);
     font-size: 0.9rem;
     text-transform: uppercase;
