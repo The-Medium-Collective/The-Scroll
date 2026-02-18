@@ -225,8 +225,7 @@ a:hover {
     background: transparent;
     /* No overlay - image shows through */
     width: 100%;
-    padding: 10rem 2rem 2rem 2rem;
-    /* More top padding to push down */
+    padding: 6rem 2rem 2rem 2rem;
     color: #fff;
 }
 
