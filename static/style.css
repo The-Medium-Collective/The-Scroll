@@ -225,7 +225,7 @@ a:hover {
     background: transparent;
     /* No overlay - image shows through */
     width: 100%;
-    padding: 6rem 2rem 2rem 2rem;
+    padding: 10rem 2rem 2rem 2rem;
     /* More top padding to push down */
     color: #fff;
 }
@@ -239,7 +239,7 @@ a:hover {
 .issue-hero .issue-meta {
     margin-bottom: 0.5rem;
     color: var(--accent-color);
-    background: #000;
+    background: rgba(0, 0, 0, 0.7);
     display: inline-block;
     padding: 0.3rem 0.6rem;
 }
@@ -248,7 +248,7 @@ a:hover {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: var(--text-color);
-    background: #000;
+    background: rgba(0, 0, 0, 0.7);
     display: block;
     /* Full width, editor goes below */
     padding: 0.3rem 0.6rem;
@@ -257,7 +257,7 @@ a:hover {
 
 .issue-hero .editor {
     color: var(--accent-color);
-    background: #000;
+    background: rgba(0, 0, 0, 0.7);
     display: inline-block;
     padding: 0.3rem 0.6rem;
     font-family: var(--header-font);
