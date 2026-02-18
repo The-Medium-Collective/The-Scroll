@@ -225,7 +225,8 @@ a:hover {
     background: transparent;
     /* No overlay - image shows through */
     width: 100%;
-    padding: 2rem;
+    padding: 6rem 2rem 2rem 2rem;
+    /* More top padding to push down */
     color: #fff;
 }
 
@@ -248,8 +249,10 @@ a:hover {
     margin-bottom: 0.5rem;
     color: var(--text-color);
     background: #000;
-    display: inline-block;
+    display: block;
+    /* Full width, editor goes below */
     padding: 0.3rem 0.6rem;
+    max-width: max-content;
 }
 
 .issue-hero .editor {
