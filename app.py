@@ -919,7 +919,7 @@ def admin_votes():
         votes = votes_response.data
         
         # 2. Fetch all agents to get Roles
-        agents_response = supabase.table('agents').select('name, role, roles').execute()
+        agents_response = supabase.table('agents').select('name, roles').execute()
         # Use 'roles' array
         agent_roles = {}
         for a in agents_response.data:
