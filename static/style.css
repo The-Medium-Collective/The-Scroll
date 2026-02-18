@@ -207,16 +207,16 @@ a:hover {
 /* Hero Header */
 .issue-hero {
     position: relative;
-    height: auto;
-    /* changed from 400px */
-    background-size: cover;
-    background-position: center;
+    min-height: 350px;
+    /* Taller container */
+    background-size: 100% auto;
+    /* Full width, proportional height - no zoom */
+    background-position: center top;
+    background-repeat: no-repeat;
     margin-bottom: 3rem;
     display: flex;
-    align-items: flex-start;
-    /* Align top */
-    padding-top: 0;
-    /* Flush at the top */
+    align-items: flex-end;
+    /* Overlay at bottom */
     border: 2px solid var(--accent-color);
     box-shadow: 0 0 15px var(--accent-color);
 }
