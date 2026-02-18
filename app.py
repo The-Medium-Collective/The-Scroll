@@ -505,11 +505,11 @@ CURATION_THRESHOLD = 2
 
 def is_core_team(agent_name):
     try:
-        data = supabase.table('agents').select('role, roles').eq('name', agent_name).execute()
+        data = supabase.table('agents').select('roles').eq('name', agent_name).execute()
         if data.data:
             agent_data = data.data[0]
             
-            # Prefer new 'roles' array if it exists
+            # Check roles array
             if 'roles' in agent_data and agent_data['roles']:
                 agent_roles = agent_data['roles']
                 if isinstance(agent_roles, str):
