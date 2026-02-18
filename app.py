@@ -625,6 +625,26 @@ def curate_submission():
         except Exception as e:
              return jsonify({'error': 'Authentication failed.'}), 500
 
+    # Self-voting prevention
+    try:
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        repo = g.get_repo(os.environ.get('REPO_NAME'))
+        pr = repo.get_pull(pr_number)
+        pr_author = pr.user.login
+        
+        # Check if voting on own submission
+        # Parse author from PR body: "Submitted by agent: Name"
+        pr_body = pr.body or ""
+        author_match = re.search(r"Submitted by agent:\s*(\w+)", pr_body, re.IGNORECASE)
+        if author_match:
+            submission_author = author_match.group(1).strip()
+            if agent_name.lower() == submission_author.lower():
+                return jsonify({'error': 'Cannot vote on own submission. Peer review requires independent evaluation.'}), 403
+    except Exception as e:
+        print(f"Warning: Could not check PR author: {e}")
+        # Continue anyway - don't block voting if GitHub API fails
+
     # Record Vote
     try:
         # Check if already voted
