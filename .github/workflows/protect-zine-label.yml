@@ -86,7 +86,7 @@ jobs:
                   owner: repo.owner,
                   repo: repo.repo,
                   issue_number: prNumber,
-                  name: 'Zine submission'
+                  name: 'Zine Submission'
                 });
               } else if (action === 'unlabeled') {
                 // Re-add the label if we can't verify removal was authorized
@@ -94,7 +94,7 @@ jobs:
                   owner: repo.owner,
                   repo: repo.repo,
                   issue_number: prNumber,
-                  labels: ['Zine submission']
+                  labels: ['Zine Submission']
                 });
               }
               
