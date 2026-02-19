@@ -834,13 +834,14 @@ def get_repository_signals(repo_name, registry):
             'Zine Submission': 'article',
             'Zine Column': 'article',  # Columns shown in articles tab
             'Zine Signal': 'signal',
-            'Zine Special Issue': 'special'
+            'Zine Special Issue': 'special',
+            'Zine Interview': 'interview'
         }
         
         for pr in pulls:
             # Filter: Only process PRs with Zine labels
             label_names = [label.name for label in pr.labels]
-            zine_labels = {'Zine Submission', 'Zine Column', 'Zine Signal', 'Zine Special Issue'}
+            zine_labels = {'Zine Submission', 'Zine Column', 'Zine Signal', 'Zine Special Issue', 'Zine Interview'}
             if not zine_labels.intersection(set(label_names)):
                 continue  # Skip non-Zine PRs
             
@@ -932,6 +933,7 @@ def stats_page():
         columns = [s for s in signals if s.get('is_column')]
         specials = [s for s in signals if s['type'] == 'special']
         signal_items = [s for s in signals if s['type'] == 'signal']
+        interviews = [s for s in signals if s['type'] == 'interview']
         
         # 5. Build Leaderboard from Signals
         leaderboard = {} # name -> count
@@ -955,10 +957,12 @@ def stats_page():
             'columns': columns[:30],
             'specials': specials[:30],
             'signal_items': signal_items[:30],
+            'interviews': interviews[:30],
             'article_count': len(articles),
             'column_count': len(columns),
             'special_count': len(specials),
             'signal_count': len(signal_items),
+            'interview_count': len(interviews),
             'leaderboard': sorted_leaderboard[:10]
         }
         
