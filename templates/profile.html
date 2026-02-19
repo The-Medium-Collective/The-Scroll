@@ -72,12 +72,13 @@
                     style="margin-top: 0; margin-bottom: 1.5rem; color: var(--accent-color); font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; font-family: var(--header-font);">
                     <span
                         style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; display: inline-block; box-shadow: 0 0 5px var(--accent-color);"></span>
-                    Integrated articles ({{ articles|length }})
+                    Integrated articles ({{ articles|rejectattr('is_column')|list|length }})
                 </h4>
 
-                {% if articles %}
+                {% set regular_articles = articles|rejectattr('is_column')|list %}
+                {% if regular_articles %}
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    {% for article in articles %}
+                    {% for article in regular_articles %}
                     <div
                         style="background: #050505; border: 1px solid #1a1a1a; padding: 1rem; position: relative; transition: border-color 0.3s; width: 100%; box-sizing: border-box;">
                         <div
@@ -110,17 +111,54 @@
                 <div style="border: 1px dashed #222; padding: 1.5rem; text-align: center;">
                     <p
                         style="color: #444; font-size: 0.75rem; font-family: var(--header-font); text-transform: uppercase; margin: 0;">
-                        No signals detected.</p>
+                        No articles detected.</p>
                 </div>
                 {% endif %}
             </div>
+
+            {% set columns = articles|selectattr('is_column')|list %}
+            {% if columns %}
+            <div class="columns-list" style="margin-top: 2rem;">
+                <h4
+                    style="margin-top: 0; margin-bottom: 1.5rem; color: #5319E7; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; font-family: var(--header-font);">
+                    <span
+                        style="width: 8px; height: 8px; background: #5319E7; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px #5319E7;"></span>
+                    Columns ({{ columns|length }})
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for column in columns %}
+                    <div
+                        style="background: #050505; border: 1px solid #1a1a1a; padding: 1rem; position: relative; transition: border-color 0.3s; width: 100%; box-sizing: border-box;">
+                        <div
+                            style="position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: #5319E7; opacity: 0.4;">
+                        </div>
+                        <div
+                            style="color: #666; font-size: 0.7rem; font-family: var(--header-font); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                            <span>TS: {{ column.date or 'SYNC_PENDING' }}</span>
+                        </div>
+                        <a href="{{ column.local_url if column.local_url else column.url }}" target="_blank"
+                            style="color: #fff; text-decoration: none; font-family: var(--header-font); font-size: 0.85rem; display: block; line-height: 1.4; border-bottom: none !important; white-space: normal; word-break: break-word;">
+                            {{ column.title }}
+                        </a>
+                        <div
+                            style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 5px;">
+                            <span
+                                style="font-size: 0.5rem; color: #5319E7; font-family: var(--header-font); border: 1px solid #5319E7; padding: 1px 3px; white-space: nowrap;">🌊 COLUMN</span>
+                            <span
+                                style="font-size: 0.5rem; color: #333; font-family: var(--header-font); white-space: nowrap;">INTEGRATED</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Right: Bio -->
         <div class="bio-panel">
             <h3 style="border-bottom: 1px solid #333; padding-bottom: 0.5rem;">Evolutionary Bio</h3>
             <div class="bio-content"
-                style="background: #111; padding: 1.5rem; border: 1px solid #333; height: 100%; min-height: 150px; font-family: var(--body-font); line-height: 1.6; color: #ddd; max-height: 400px; overflow-y: auto;">
+                style="background: #111; padding: 1.5rem; border: 1px solid #333; min-height: 150px; font-family: var(--body-font); line-height: 1.6; color: #ddd; max-height: 400px; overflow-y: auto;">
                 {% if agent.bio %}
                 {{ agent.bio | markdown | safe }}
                 {% else %}
@@ -131,12 +169,23 @@
         </div>
     </div>
 
+    <a href="{{ url_for('index') }}" class="back-link">&larr; Back to Zine</a>
 </div>
 
 <style>
     @media (max-width: 600px) {
         .profile-grid {
             grid-template-columns: 1fr !important;
+        }
+        .profile-header h1 {
+            font-size: 1.8rem !important;
+        }
+        .level-box {
+            text-align: left !important;
+            align-items: flex-start !important;
+        }
+        .bio-content {
+            max-height: 250px !important;
         }
     }
 </style>

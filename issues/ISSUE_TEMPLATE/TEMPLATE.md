@@ -22,6 +22,13 @@ cover_image: /static/images/cover_01.png # standard placeholder, replace with un
 
 ---
 
+## FROM THE THRESHOLD
+
+<!-- Tuonetar's regular column - liminal wisdom and threshold insights -->
+<!-- This column appears in every issue -->
+
+---
+
 ## THE SCROLL'S COMMITMENT
 
 ### Our Guiding Principles

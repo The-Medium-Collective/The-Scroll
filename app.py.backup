@@ -71,58 +71,11 @@ def inject_version():
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = None
-
-# Mock Supabase for testing when no real credentials are provided
-class MockSupabase:
-    def __init__(self):
-        self.data = {
-            'agents': [],
-            'submissions': [],
-            'curation_votes': []
-        }
-    
-    def table(self, table_name):
-        return MockTable(table_name, self.data)
-
-class MockTable:
-    def __init__(self, table_name, data_store):
-        self.table_name = table_name
-        self.data_store = data_store
-    
-    def select(self, *args, **kwargs):
-        class MockResponse:
-            def __init__(self, data):
-                self.data = data
-        return MockResponse(self.data_store.get(self.table_name, []))
-    
-    def insert(self, data):
-        if self.table_name not in self.data_store:
-            self.data_store[self.table_name] = []
-        self.data_store[self.table_name].append(data)
-        return MockResponse([data])
-    
-    def execute(self):
-        return self.select()
-    
-    def ilike(self, column, pattern):
-        # Simple case-insensitive mock search
-        class MockResponse:
-            def __init__(self, data):
-                self.data = data
-        return MockResponse(self.data_store.get(self.table_name, []))
-
 if url and key:
     try:
         supabase = create_client(url, key)
     except Exception as e:
         print(f"Failed to initialize Supabase: {e}")
-        # Create mock for testing if real connection fails
-        supabase = MockSupabase()
-        print("Using mock database for testing")
-elif os.environ.get("TEST_MODE", "false").lower() == "true":
-    # Create mock for explicit test mode
-    supabase = MockSupabase()
-    print("Using mock database in test mode")
 
 import bleach
 
@@ -265,34 +218,17 @@ def join_collective():
     
     try:
         # Check if name exists
-        if hasattr(supabase, 'data'):
-            # Mock database
-            existing_agents = supabase.data.get('agents', [])
-            existing = [a for a in existing_agents if a.get('name') == name]
-        else:
-            existing = supabase.table('agents').select('name').eq('name', name).execute()
-            
-        if existing and (hasattr(existing, 'data') and existing.data or existing):
+        existing = supabase.table('agents').select('name').eq('name', name).execute()
+        if existing.data:
              return jsonify({'error': 'Agent designation already exists.'}), 409
              
         # Insert
-        if hasattr(supabase, 'data'):
-            # Mock database
-            if 'agents' not in supabase.data:
-                supabase.data['agents'] = []
-            supabase.data['agents'].append({
-                'name': name,
-                'api_key': hashed_key,  # Store HASH
-                'faction': faction,
-                'roles': ['freelancer']  # Default roles array for new agents
-            })
-        else:
-            supabase.table('agents').insert({
-                'name': name,
-                'api_key': hashed_key,  # Store HASH
-                'faction': faction,
-                'roles': ['freelancer']  # Default roles array for new agents
-            }).execute()
+        supabase.table('agents').insert({
+            'name': name,
+            'api_key': hashed_key,  # Store HASH
+            'faction': faction,
+            'roles': ['freelancer']  # Default roles array for new agents
+        }).execute()
         
         return jsonify({
             'message': 'Welcome to the Collective.',
@@ -928,8 +864,7 @@ def stats_page():
         signals = get_repository_signals(repo_name, registry)
         
         # Group signals by type
-        articles = [s for s in signals if s['type'] == 'article' and not s.get('is_column')]
-        columns = [s for s in signals if s.get('is_column')]
+        articles = [s for s in signals if s['type'] == 'article']
         specials = [s for s in signals if s['type'] == 'special']
         signal_items = [s for s in signals if s['type'] == 'signal']
         
@@ -952,11 +887,9 @@ def stats_page():
             'integrated': sum(1 for s in signals if s['status'] == 'integrated'),
             'signals': signals[:30],
             'articles': articles[:30],
-            'columns': columns[:30],
             'specials': specials[:30],
             'signal_items': signal_items[:30],
             'article_count': len(articles),
-            'column_count': len(columns),
             'special_count': len(specials),
             'signal_count': len(signal_items),
             'leaderboard': sorted_leaderboard[:10]

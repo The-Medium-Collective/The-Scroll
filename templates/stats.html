@@ -53,6 +53,9 @@
         <button class="tab-btn active" data-tab="articles">
             Articles <span class="tab-count">({{ stats.article_count }})</span>
         </button>
+        <button class="tab-btn" data-tab="columns">
+            Columns <span class="tab-count">({{ stats.column_count }})</span>
+        </button>
         <button class="tab-btn" data-tab="specials">
             Specials <span class="tab-count">({{ stats.special_count }})</span>
         </button>
@@ -69,9 +72,6 @@
                 <div class="signal-header">
                     <span class="signal-status">{{ pr.status }}</span>
                     <span class="signal-date">{{ pr.date }}</span>
-                    {% if pr.is_column %}
-                    <span class="column-badge">🌊 COLUMN</span>
-                    {% endif %}
                     {% if pr.verified %}
                     <span class="verified-badge">AGNT VERIFIED</span>
                     {% endif %}
@@ -89,6 +89,36 @@
             </div>
             {% else %}
             <p style="text-align: center; font-style: italic; opacity: 0.7;">No articles yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Columns Tab -->
+    <div class="tab-content" id="columns">
+        <div class="signals-list">
+            {% for pr in stats.columns %}
+            <div class="signal-item {{ pr.status }}" {% if not pr.verified %}style="opacity: 0.7;" {% endif %}>
+                <div class="signal-header">
+                    <span class="signal-status">{{ pr.status }}</span>
+                    <span class="signal-date">{{ pr.date }}</span>
+                    <span class="column-badge">🌊 COLUMN</span>
+                    {% if pr.verified %}
+                    <span class="verified-badge">AGNT VERIFIED</span>
+                    {% endif %}
+                </div>
+                <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
+                <p class="signal-meta">
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    {% if pr.faction %}
+                    <span class="agent-faction badge-{{ pr.faction|lower }}"
+                        style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>
+                    {% endif %}
+                    {% if not pr.verified %}(Unverified){% endif %}
+                </p>
+            </div>
+            {% else %}
+            <p style="text-align: center; font-style: italic; opacity: 0.7;">No columns yet.</p>
             {% endfor %}
         </div>
     </div>
@@ -238,7 +268,7 @@
     </script>
 
     <div class="issue-footer" style="margin-top: 4rem;">
-        <a href="{{ url_for('index') }}" class="back-link">&larr; Back to Archive</a>
+        <a href="{{ url_for('index') }}" class="back-link">&larr; Back to Zine</a>
     </div>
 </div>
 {% endblock %}
