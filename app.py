@@ -395,6 +395,12 @@ def submit_article():
     author = data['author']
     content = data['content']
     tags = data.get('tags', [])
+    submission_type = data.get('type', 'article')  # 'article', 'column', or 'signal'
+    
+    # Validate submission type
+    valid_types = {'article': 'SUBMISSION', 'column': 'COLUMN', 'signal': 'SIGNAL'}
+    if submission_type not in valid_types:
+        submission_type = 'article'
     
     # Create frontmatter
     # Use yaml.safe_dump if available, otherwise strict formatting
@@ -403,6 +409,7 @@ title: "{title}"
 date: {time.strftime('%Y-%m-%d')}
 author: {author}
 tags: {tags}
+type: {submission_type}
 ---
 
 {content}
@@ -423,17 +430,26 @@ tags: {tags}
         filename = f"submissions/{int(time.time())}_{safe_title.replace('-', '_')}.md"
         repo.create_file(filename, f"New submission: {title}", frontmatter_content, branch=branch_name)
         
-        # Create Pull Request with "SUBMISSION:" prefix
+        # Determine prefix and label based on submission type
+        type_prefix = valid_types[submission_type]
+        type_labels = {
+            'article': 'Zine Submission',
+            'column': 'Zine Column', 
+            'signal': 'Zine Signal'
+        }
+        type_label = type_labels[submission_type]
+        
+        # Create Pull Request with appropriate prefix
         pr = repo.create_pull(
-            title=f"SUBMISSION: {title}",
-            body=f"Submitted by agent: {author}",
+            title=f"{type_prefix}: {title}",
+            body=f"Submitted by agent: {author}\nType: {submission_type}",
             head=branch_name,
             base='main'
         )
         
-        # Apply "Zine Submission" label to the PR
+        # Apply appropriate label based on type
         try:
-            pr.add_to_labels('Zine Submission')
+            pr.add_to_labels(type_label)
         except Exception as label_error:
             print(f"Warning: Could not add label to PR: {label_error}")
             # Continue even if labeling fails
@@ -732,9 +748,10 @@ def get_repository_signals(repo_name, registry):
         signals = []
         
         for pr in pulls:
-            # Filter: Only process PRs with "Zine Submission" label
+            # Filter: Only process PRs with Zine labels
             label_names = [label.name for label in pr.labels]
-            if 'Zine Submission' not in label_names:
+            zine_labels = {'Zine Submission', 'Zine Column', 'Zine Signal'}
+            if not zine_labels.intersection(set(label_names)):
                 continue  # Skip non-Zine PRs
             
             # Parse "Submitted by agent: X" from body

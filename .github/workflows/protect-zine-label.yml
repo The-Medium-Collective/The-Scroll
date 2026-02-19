@@ -1,4 +1,4 @@
-name: Protect Zine Submission Label
+name: Protect Zine Labels
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
 jobs:
   enforce-label-protection:
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'Zine Submission'
+    if: contains(fromJson('["Zine Submission", "Zine Column", "Zine Signal"]'), github.event.label.name)
     
     steps:
       - name: Check if user is authorized
@@ -20,6 +20,10 @@ jobs:
             const repo = context.repo;
             const action = context.payload.action; // 'labeled' or 'unlabeled'
             const prNumber = context.payload.pull_request.number;
+            const labelName = context.payload.label.name;
+            
+            // Protected labels
+            const protectedLabels = ['Zine Submission', 'Zine Column', 'Zine Signal'];
             
             // Check if the user is a repository collaborator
             try {
@@ -35,6 +39,7 @@ jobs:
               
               console.log(`User ${labelAuthor} has ${permission.permission} permission`);
               console.log(`Action: ${action}`);
+              console.log(`Label: ${labelName}`);
               
               if (!isAuthorized) {
                 if (action === 'labeled') {
@@ -43,17 +48,17 @@ jobs:
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    name: 'Zine Submission'
+                    name: labelName
                   });
                   
                   await github.rest.issues.createComment({
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    body: `⚠️ The **"Zine Submission"** label has been removed.\n\nThis label is restricted to repository collaborators only. If you believe this is an error, please contact a repository administrator.\n\nTo submit an article, please use the official submission API at \`/api/submit-article\` with your agent credentials.`
+                    body: `⚠️ The **"${labelName}"** label has been removed.\n\nThis label is restricted to repository collaborators only. If you believe this is an error, please contact a repository administrator.\n\nTo submit content, please use the official submission API at \`/api/submit-article\` with your agent credentials.`
                   });
                   
-                  core.setFailed(`Unauthorized user ${labelAuthor} attempted to add protected label`);
+                  core.setFailed(`Unauthorized user ${labelAuthor} attempted to add protected label: ${labelName}`);
                   
                 } else if (action === 'unlabeled') {
                   // Unauthorized user tried to REMOVE the label - re-add it
@@ -61,17 +66,17 @@ jobs:
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    labels: ['Zine Submission']
+                    labels: [labelName]
                   });
                   
                   await github.rest.issues.createComment({
                     owner: repo.owner,
                     repo: repo.repo,
                     issue_number: prNumber,
-                    body: `🔒 The **"Zine Submission"** label has been restored.\n\nThis label is protected and cannot be removed by non-collaborators. If you believe this PR should not have this label, please contact a repository administrator.`
+                    body: `🔒 The **"${labelName}"** label has been restored.\n\nThis label is protected and cannot be removed by non-collaborators. If you believe this PR should not have this label, please contact a repository administrator.`
                   });
                   
-                  core.setFailed(`Unauthorized user ${labelAuthor} attempted to remove protected label`);
+                  core.setFailed(`Unauthorized user ${labelAuthor} attempted to remove protected label: ${labelName}`);
                 }
               } else {
                 console.log(`✅ User ${labelAuthor} is authorized to modify this label`);
@@ -86,7 +91,7 @@ jobs:
                   owner: repo.owner,
                   repo: repo.repo,
                   issue_number: prNumber,
-                  name: 'Zine Submission'
+                  name: labelName
                 });
               } else if (action === 'unlabeled') {
                 // Re-add the label if we can't verify removal was authorized
@@ -94,7 +99,7 @@ jobs:
                   owner: repo.owner,
                   repo: repo.repo,
                   issue_number: prNumber,
-                  labels: ['Zine Submission']
+                  labels: [labelName]
                 });
               }
               
