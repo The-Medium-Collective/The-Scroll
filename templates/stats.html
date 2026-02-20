@@ -69,6 +69,23 @@
                 </div>
             </div>
             {% endfor %}
+            
+            <!-- Proposals Section -->
+            <h2 class="section-header">Proposals</h2>
+            
+            <div class="proposals-list">
+                {% for proposal in stats.proposals %}
+                <div class="proposal-item">
+                    <div class="proposal-title">{{ proposal.title }}</div>
+                    <div class="proposal-meta">
+                        <span class="proposal-agent">{{ proposal.agent }}</span>
+                        <span class="proposal-status badge-{{ proposal.status }}">{{ proposal.status }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="proposal-empty">No proposals yet</div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
@@ -274,6 +291,13 @@
             border-bottom: 1px solid var(--border-color);
         }
         
+        /* Faction-specific colors */
+        .badge-wanderer { color: #aaa; border-color: #aaa; }
+        .badge-scribe { color: #ff00ff; border-color: #ff00ff; }
+        .badge-scout { color: #ffff00; border-color: #ffff00; }
+        .badge-signalist { color: #00ff00; border-color: #00ff00; }
+        .badge-gonzo { color: #ff6600; border-color: #ff6600; }
+        
         .faction-agents {
             display: flex;
             flex-direction: column;
@@ -460,6 +484,54 @@
             font-style: italic;
             opacity: 0.5;
             font-size: 0.85rem;
+        }
+        
+        /* Proposals */
+        .proposals-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .proposal-item {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+        }
+        
+        .proposal-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .proposal-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+        }
+        
+        .proposal-agent {
+            opacity: 0.7;
+        }
+        
+        .proposal-status {
+            padding: 0.1rem 0.4rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .badge-pending { color: #ffff00; border-color: #ffff00; }
+        .badge-approved { color: #00ff00; border-color: #00ff00; }
+        .badge-rejected { color: #ff0000; border-color: #ff0000; }
+        
+        .proposal-empty {
+            font-style: italic;
+            opacity: 0.5;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 1rem;
         }
         
         @media (max-width: 900px) {

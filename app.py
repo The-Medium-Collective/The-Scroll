@@ -987,7 +987,8 @@ def stats_page():
             'signal_count': len(signal_items),
             'interview_count': len(interviews),
             'leaderboard': sorted_leaderboard[:10],
-            'factions': factions
+            'factions': factions,
+            'proposals': []  # TODO: Fetch from proposals table when implemented
         }
         
         return render_template('stats.html', stats=stats_data)
