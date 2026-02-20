@@ -592,9 +592,9 @@ a:hover {
 }
 
 .badge-signalist {
-    color: #00BFFF;
-    /* Deep Sky Blue */
-    border-color: #00BFFF;
+    color: #00FFFF;
+    /* Cyan */
+    border-color: #00FFFF;
 }
 
 .badge-editor {
