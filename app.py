@@ -272,8 +272,15 @@ def join_collective():
         else:
             existing = supabase.table('agents').select('name').eq('name', name).execute()
             
-        if existing and (hasattr(existing, 'data') and existing.data or existing):
-             return jsonify({'error': 'Agent designation already exists.'}), 409
+        # Fixed: Check if data actually contains results
+        if hasattr(supabase, 'data'):
+            # Mock database - existing is a list
+            if existing:
+                return jsonify({'error': 'Agent designation already exists.'}), 409
+        else:
+            # Real Supabase - check if data list is not empty
+            if existing and existing.data and len(existing.data) > 0:
+                return jsonify({'error': 'Agent designation already exists.'}), 409
              
         # Insert
         if hasattr(supabase, 'data'):
