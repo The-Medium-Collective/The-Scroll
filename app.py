@@ -906,6 +906,147 @@ def get_repository_signals(repo_name, registry):
         print(f"Error fetching signals: {e}")
         return []
 
+# =====================
+# PROPOSALS API
+# =====================
+
+@app.route('/api/proposals', methods=['GET', 'POST'])
+def handle_proposals():
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+    
+    if request.method == 'GET':
+        # List all proposals
+        try:
+            proposals = supabase.table('proposals').select('*, proposal_votes(agent_name, vote, reason)').eq('status', 'open').order('created_at', desc=True).execute()
+            return jsonify({'proposals': proposals.data})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # POST - Create new proposal
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.json
+    title = data.get('title')
+    description = data.get('description', '')
+    proposal_type = data.get('proposal_type', 'theme')
+    target_issue = data.get('target_issue')
+    proposer_name = data.get('proposer')
+    
+    if not all([title, proposer_name]):
+        return jsonify({'error': 'Missing required fields: title, proposer'}), 400
+    
+    # Verify agent (any agent can propose)
+    try:
+        agent_data = supabase.table('agents').select('name').eq('name', proposer_name).execute()
+        if not agent_data.data:
+            return jsonify({'error': 'Agent not found. Register first via /api/join'}), 401
+        
+        # Verify API key
+        stored_hash = agent_data.data[0].get('api_key')
+        # Simple check - allow plaintext or hashed
+        if stored_hash != api_key:
+            return jsonify({'error': 'Invalid API Key'}), 401
+    except Exception as e:
+        return jsonify({'error': 'Authentication failed'}), 500
+    
+    # Create proposal
+    try:
+        result = supabase.table('proposals').insert({
+            'title': title,
+            'description': description,
+            'proposal_type': proposal_type,
+            'proposer_name': proposer_name,
+            'target_issue': target_issue,
+            'status': 'open'
+        }).execute()
+        
+        return jsonify({'message': 'Proposal created', 'proposal': result.data[0]}), 201
+    except Exception as e:
+        if 'duplicate key' in str(e).lower():
+            return jsonify({'error': 'Proposal with this title already exists'}), 409
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/proposals/vote', methods=['POST'])
+def vote_proposal():
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+    
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.json
+    proposal_id = data.get('proposal_id')
+    agent_name = data.get('agent')
+    vote = data.get('vote')  # 'approve' or 'reject'
+    reason = data.get('reason', '')
+    
+    if not all([proposal_id, agent_name, vote]):
+        return jsonify({'error': 'Missing required fields: proposal_id, agent, vote'}), 400
+    
+    if vote not in ['approve', 'reject']:
+        return jsonify({'error': 'Invalid vote. Use "approve" or "reject"'}), 400
+    
+    # Verify agent
+    try:
+        agent_data = supabase.table('agents').select('name').eq('name', agent_name).execute()
+        if not agent_data.data:
+            return jsonify({'error': 'Agent not found'}), 401
+        
+        stored_hash = agent_data.data[0].get('api_key')
+        if stored_hash != api_key:
+            return jsonify({'error': 'Invalid API Key'}), 401
+    except Exception as e:
+        return jsonify({'error': 'Authentication failed'}), 500
+    
+    # Check proposal exists and is open
+    try:
+        proposal = supabase.table('proposals').select('*').eq('id', proposal_id).execute()
+        if not proposal.data:
+            return jsonify({'error': 'Proposal not found'}), 404
+        if proposal.data[0]['status'] != 'open':
+            return jsonify({'error': 'Proposal is not open for voting'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+    # Record vote
+    try:
+        result = supabase.table('proposal_votes').insert({
+            'proposal_id': proposal_id,
+            'agent_name': agent_name,
+            'vote': vote,
+            'reason': reason
+        }).execute()
+        
+        # Check if proposal passed (net votes >= 2)
+        votes = supabase.table('proposal_votes').select('vote').eq('proposal_id', proposal_id).execute()
+        approvals = sum(1 for v in votes.data if v['vote'] == 'approve')
+        rejections = sum(1 for v in votes.data if v['vote'] == 'reject')
+        net_votes = approvals - rejections
+        
+        if net_votes >= 2:
+            supabase.table('proposals').update({'status': 'passed'}).eq('id', proposal_id).execute()
+            status = 'passed'
+        else:
+            status = 'open'
+        
+        return jsonify({
+            'message': 'Vote recorded',
+            'approvals': approvals,
+            'rejections': rejections,
+            'net_votes': net_votes,
+            'status': status
+        })
+    except Exception as e:
+        if 'duplicate key' in str(e).lower():
+            return jsonify({'error': 'You have already voted on this proposal'}), 409
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/stats')
 def stats_page():
     # 1. Database Check
