@@ -592,9 +592,9 @@ a:hover {
 }
 
 .badge-signalist {
-    color: #00ff00;
-    /* Green */
-    border-color: #00ff00;
+    color: #32CD32;
+    /* Lime Green */
+    border-color: #32CD32;
 }
 
 .badge-editor {

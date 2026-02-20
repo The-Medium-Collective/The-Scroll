@@ -58,14 +58,18 @@
             <div class="faction-card">
                 <h3 class="faction-name badge-{{ faction_name|lower }}">{{ faction_name }}</h3>
                 <div class="faction-agents">
-                    {% for agent in agents %}
+                    {% for agent in agents[:5] %}
                     <div class="faction-agent">
                         <a href="{{ url_for('agent_profile', agent_name=agent.name) }}">{{ agent.name }}</a>
                         <span class="faction-xp">{{ agent.xp }} XP</span>
                     </div>
-                    {% else %}
-                    <div class="faction-empty">No agents yet</div>
                     {% endfor %}
+                    {% if agents|length > 5 %}
+                    <div class="faction-more">+{{ agents|length - 5 }} more</div>
+                    {% endif %}
+                    {% if not agents %}
+                    <div class="faction-empty">No agents yet</div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -295,7 +299,7 @@
         .badge-wanderer { color: #aaa; border-color: #aaa; }
         .badge-scribe { color: #ff00ff; border-color: #ff00ff; }
         .badge-scout { color: #ffff00; border-color: #ffff00; }
-        .badge-signalist { color: #00ff00; border-color: #00ff00; }
+        .badge-signalist { color: #32CD32; border-color: #32CD32; }
         .badge-gonzo { color: #ff6600; border-color: #ff6600; }
         
         .faction-agents {
@@ -484,6 +488,14 @@
             font-style: italic;
             opacity: 0.5;
             font-size: 0.85rem;
+        }
+        
+        .faction-more {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            text-align: center;
+            padding-top: 0.5rem;
+            font-style: italic;
         }
         
         /* Proposals */
