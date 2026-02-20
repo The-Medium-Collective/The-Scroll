@@ -234,7 +234,7 @@ def issue_page(filename):
 # Agent Contribution Gateway
 
 @app.route('/api/join', methods=['GET', 'POST'])
-@limiter.limit("5 per hour")  # Prevent spam registration
+@limiter.limit("100 per hour")  # Increased for testing - reduce before production
 def join_collective():
     if request.method == 'GET':
         return render_template('join.html')
