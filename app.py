@@ -7,6 +7,9 @@ import frontmatter
 import markdown
 import time
 from dotenv import load_dotenv
+import hmac
+import hashlib
+import re
 
 import secrets
 import uuid
@@ -565,6 +568,25 @@ def github_webhook():
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
+    # SECURITY: Verify GitHub webhook signature
+    webhook_secret = os.environ.get('GITHUB_WEBHOOK_SECRET')
+    if webhook_secret:
+        signature = request.headers.get('X-Hub-Signature-256')
+        if not signature:
+            return jsonify({'error': 'Missing signature'}), 401
+        
+        # Compute expected signature
+        payload_bytes = request.get_data()
+        expected_sig = 'sha256=' + hmac.new(
+            webhook_secret.encode(),
+            payload_bytes,
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(signature, expected_sig):
+            return jsonify({'error': 'Invalid signature'}), 401
+    
     try:
         payload = request.get_json()
         
@@ -610,6 +632,45 @@ def github_webhook():
 
 CORE_ROLES = {'editor', 'curator', 'system'}
 CURATION_THRESHOLD = 2
+
+def verify_api_key(api_key):
+    """Verify API key and return agent name if valid, None otherwise"""
+    if not api_key or not supabase:
+        return None
+    
+    # Check master key first
+    master_key = os.environ.get('AGENT_API_KEY')
+    if master_key and api_key == master_key:
+        # Master key can act as any agent, but we need to know who
+        # For proposal endpoints, we'll require explicit agent_name in request
+        return 'master'
+    
+    # Check against all agents
+    try:
+        agents = supabase.table('agents').select('name, api_key').execute()
+        if not agents.data:
+            return None
+        
+        for agent in agents.data:
+            stored_hash = agent['api_key']
+            # Try Argon2 verification
+            if ph:
+                try:
+                    ph.verify(stored_hash, api_key)
+                    return agent['name']
+                except VerifyMismatchError:
+                    pass
+                except:
+                    pass
+            
+            # Fallback: direct comparison
+            if stored_hash == api_key:
+                return agent['name']
+        
+        return None
+    except Exception as e:
+        print(f"API key verification error: {e}")
+        return None
 
 def is_core_team(agent_name):
     try:
@@ -1035,12 +1096,22 @@ def start_voting():
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
+    # SECURITY: Verify authentication
     api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized: X-API-KEY header missing'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # SECURITY: Only core team can start voting
+    if agent_name != 'master' and not is_core_team(agent_name):
+        return jsonify({'error': 'Forbidden: Only core team can start voting'}), 403
+    
     data = request.json
     proposal_id = data.get('proposal_id')
     
-    # Only proposer or core team can start voting
-    # (Simplified - just check authentication)
     try:
         proposal = supabase.table('proposals').select('*').eq('id', proposal_id).execute()
         if not proposal.data:
@@ -1149,6 +1220,19 @@ def mark_implemented():
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
+    # SECURITY: Verify authentication
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized: X-API-KEY header missing'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # SECURITY: Only core team can mark as implemented
+    if agent_name != 'master' and not is_core_team(agent_name):
+        return jsonify({'error': 'Forbidden: Only core team can mark proposals as implemented'}), 403
+    
     data = request.json
     proposal_id = data.get('proposal_id')
     
@@ -1170,6 +1254,15 @@ def check_expired_proposals():
     """Check and close expired proposals (cron job or manual trigger)"""
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
+    
+    # SECURITY: Verify authentication (cron jobs can use master key)
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized: X-API-KEY header missing'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
     
     from datetime import datetime
     now = datetime.utcnow().isoformat()
