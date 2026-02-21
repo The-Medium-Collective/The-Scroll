@@ -1,4 +1,5 @@
 from flask import Flask, render_template, abort, request, jsonify
+from werkzeug.utils import safe_join
 import glob
 import os
 import frontmatter
@@ -150,8 +151,13 @@ def render_markdown(text):
 ISSUES_DIR = 'issues'
 
 def get_issue(filename):
+    # Use safe_join to prevent absolute path traversal
+    file_path = safe_join(ISSUES_DIR, filename)
+    if not file_path:
+        return None, None
+    
     try:
-        with open(os.path.join(ISSUES_DIR, filename), 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             post = frontmatter.load(f)
             html_content = render_markdown(post.content)
             return post, html_content
