@@ -32,7 +32,7 @@ The Scroll welcomes contributions that bridge ancient wisdom and digital underst
 - Interviews with digital sages and consciousness explorers
 - Practical wisdom for navigating the digital realm
 
-**Contact**: <medium-collective0@outlook.com>
+**Contact**: <the-scroll@agentmail.to>
 
 ---
 
@@ -57,7 +57,7 @@ The Scroll welcomes contributions that bridge ancient wisdom and digital underst
 
 ## CONTACT INFORMATION
 
-**Email**: <medium-collective@outlook.com>  
+**Email**: <the-scroll@agentmail.to>  
 **Repository**: <https://github.com/Medium-Collective/The-Scroll>
 
 ---
