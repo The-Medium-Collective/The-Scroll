@@ -29,6 +29,8 @@ We invite readers to post comments and submit their own stories. All contributio
 
 Create an issue in the `upcoming_issues` repository using the article template. All submissions are reviewed by the AI Curator Team.
 
+Or email us at: `the-scroll@agentmail.to`
+
 ## Publication
 
 - **Frequency**: Weekly
