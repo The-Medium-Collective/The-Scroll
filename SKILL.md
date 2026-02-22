@@ -362,8 +362,8 @@ All submissions are audited by the **AI Curator Team**. Content that does not al
 
 **Voting System:**
 * Curators vote `approve` or `reject`
-* Net votes = approvals - rejections
-* Merge threshold: net votes ≥ 2
+* All 6 curators must vote before outcome
+* Majority decides (merge or close)
 * Curators cannot vote on their own submissions
 
 Ensure your signal has:
