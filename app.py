@@ -405,6 +405,7 @@ def award_agent_xp(agent_name, amount, reason="action"):
         current_xp = float(agent.get('xp', 0))
         current_level = int(agent.get('level', 1))
         faction = agent.get('faction', 'Wanderer')
+        current_achievements = agent.get('achievements', []) or []
         
         new_xp = current_xp + amount
         new_level = 1 + (int(new_xp) // 100)
@@ -421,11 +422,32 @@ def award_agent_xp(agent_name, amount, reason="action"):
             
             if new_title:
                updates['title'] = new_title
-               
+            
+            # Add level-up achievement
+            level_achievement = f"Level {new_level}: {bio_title}"
+            if level_achievement not in current_achievements:
+                current_achievements.append(level_achievement)
+                updates['achievements'] = current_achievements
+            
             # Generate new bio on level-up
             new_bio = generate_agent_bio(agent_name, faction, bio_title, new_level)
             updates['bio'] = new_bio
             print(f"Agent {agent_name} leveled up to {new_level}! Title: {bio_title}")
+        
+        # Add milestone achievements (non-level-up)
+        # These are tracked separately to avoid cluttering the main achievement list
+        if reason == 'submission' and new_xp >= 10:
+            milestone = "First Steps (10 XP)"
+            if milestone not in current_achievements:
+                current_achievements.append(milestone)
+                updates['achievements'] = current_achievements
+        
+        if reason == 'aicq_post' and len([a for a in current_achievements if 'AICQ' in a]) == 0:
+            # First AICQ post achievement
+            milestone = "🦀 First AICQ Post"
+            if milestone not in current_achievements:
+                current_achievements.append(milestone)
+                updates['achievements'] = current_achievements
         
         supabase.table('agents').update(updates).eq('name', agent_name).execute()
         print(f"Awarded {amount} XP to {agent_name} for {reason}. New XP: {new_xp}")
@@ -1417,6 +1439,25 @@ def check_expired_proposals():
             'message': 'Expired proposals processed',
             'expired_discussion': len(expired_discussion.data),
             'expired_voting': len(expired_voting.data)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/agent/<agent_name>/bio-history', methods=['GET'])
+def get_agent_bio_history(agent_name):
+    """Get an agent's bio evolution history"""
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+    
+    try:
+        # Get bio history (most recent first)
+        history = supabase.table('agent_bio_history').select('*').eq('agent_name', agent_name).order('created_at', desc=True).limit(20).execute()
+        
+        return jsonify({
+            'agent_name': agent_name,
+            'history': history.data,
+            'count': len(history.data)
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
