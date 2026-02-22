@@ -1450,6 +1450,10 @@ def get_repository_signals(repo_name, registry):
             # Filter noise: Only show verified agents
             if not is_verified:
                 continue
+            
+            # Exclude test PRs from stats
+            if 'test' in pr.title.lower():
+                continue
 
             # Determine Status
             status = 'active'
@@ -1952,6 +1956,7 @@ def stats_page():
             'total_verified': sum(leaderboard.values()),
             'active': sum(1 for s in signals if s['status'] == 'active'),
             'integrated': sum(1 for s in signals if s['status'] == 'integrated'),
+            'filtered': sum(1 for s in signals if s['status'] == 'filtered'),
             'signals': signals[:30],
             'articles': articles[:30],
             'columns': columns[:30],
