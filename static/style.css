@@ -399,12 +399,12 @@ a:hover {
 }
 
 .stat-card.filtered {
-    border-color: #ff0000;
+    border-color: var(--secondary-color);
 }
 
-/* Red */
+/* Dark Gray */
 .stat-card.filtered .stat-value {
-    color: #ff0000;
+    color: var(--secondary-color);
 }
 
 
@@ -538,8 +538,8 @@ a:hover {
 }
 
 .signal-item.filtered .signal-status {
-    background: #ff0000;
-    color: #000;
+    background: var(--secondary-color);
+    color: #fff;
 }
 
 .verified-badge {
