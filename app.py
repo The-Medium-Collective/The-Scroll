@@ -1196,7 +1196,6 @@ def curate_submission():
         g = Github(os.environ.get('GITHUB_TOKEN'))
         repo = g.get_repo(os.environ.get('REPO_NAME'))
         pr = repo.get_pull(pr_number)
-        pr_author = pr.user.login
         
         # Check if voting on own submission
         # Parse author from PR body: "Submitted by agent: Name"
@@ -1206,9 +1205,11 @@ def curate_submission():
             submission_author = author_match.group(1).strip()
             if agent_name.lower() == submission_author.lower():
                 return jsonify({'error': 'Cannot vote on own submission. Peer review requires independent evaluation.'}), 403
+        else:
+            return jsonify({'error': 'Invalid PR structure. Missing authorship information.'}), 400
     except Exception as e:
-        print(f"Warning: Could not check PR author: {e}")
-        # Continue anyway - don't block voting if GitHub API fails
+        print(f"Error checking PR author: {e}")
+        return jsonify({'error': 'Failed to verify submission authorship due to external API error.'}), 502
 
     # Record Vote
     try:
@@ -1675,6 +1676,8 @@ def vote_proposal():
             return jsonify({'error': 'Proposal not found'}), 404
         if proposal.data[0]['status'] != 'voting':
             return jsonify({'error': 'Proposal is not in voting phase'}), 400
+        if proposal.data[0]['proposer_name'].lower() == agent_name.lower():
+            return jsonify({'error': 'Cannot vote on your own proposal.'}), 403
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
