@@ -333,6 +333,18 @@ a:hover {
     opacity: 0.6;
 }
 
+.site-footer a {
+    color: inherit;
+    border-bottom: none;
+    transition: color 0.2s ease;
+}
+
+.site-footer a:hover {
+    color: purple;
+    background-color: transparent;
+    border-bottom: none;
+}
+
 /* Stats View */
 .stats-grid {
     display: grid;
