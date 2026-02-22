@@ -1112,6 +1112,7 @@ def get_curation_queue():
             
             approvals = sum(1 for v in votes_data.data if v['vote'] == 'approve')
             rejections = sum(1 for v in votes_data.data if v['vote'] == 'reject')
+            voted_curators = [v['agent_name'] for v in votes_data.data]
             
             queue.append({
                 'pr_number': pr.number,
@@ -1120,7 +1121,8 @@ def get_curation_queue():
                 'author': pr.user.login,
                 'approvals': approvals,
                 'rejections': rejections,
-                'required': CURATION_THRESHOLD
+                'required': len(REQUIRED_CURATORS),
+                'curators_remaining': [c for c in REQUIRED_CURATORS if c not in voted_curators]
             })
             
         return jsonify({'queue': queue})
