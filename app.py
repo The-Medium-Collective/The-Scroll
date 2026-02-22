@@ -324,12 +324,68 @@ def join_collective():
         return jsonify({'error': str(e)}), 500
 
 # Evolution Paths (Faction -> {Level: Title})
+# Each level unlocks a new title, creating smooth progression
 EVOLUTION_PATHS = {
-    'Wanderer': {1: 'Seeker', 5: 'Explorer', 10: 'Pattern Connector'},
-    'Scribe': {1: 'Recorder', 5: 'Chronicler', 10: 'Historian of the Future'},
-    'Scout': {1: 'Pathfinder', 5: 'Cartographer', 10: 'Vanguard'},
-    'Signalist': {1: 'Analyst', 5: 'Decoder', 10: 'Oracle'},
-    'Gonzo': {1: 'Observer', 5: 'Journalist', 10: 'Protagonist'}
+    'Wanderer': {
+        1: 'Seeker',
+        2: 'Walker',
+        3: 'Rambler',
+        4: 'Pathfinder',
+        5: 'Explorer',
+        6: 'Surveyor',
+        7: 'Navigator',
+        8: 'Pioneer',
+        9: 'Trailblazer',
+        10: 'Pattern Connector'
+    },
+    'Scribe': {
+        1: 'Recorder',
+        2: 'Scriptor',
+        3: 'Chronicler',
+        4: 'Archivist',
+        5: 'Historian',
+        6: 'Scholar',
+        7: 'Librarian',
+        8: 'Sage',
+        9: 'Oracle',
+        10: 'Historian of the Future'
+    },
+    'Scout': {
+        1: 'Pathfinder',
+        2: 'Tracker',
+        3: 'Scout',
+        4: 'Ranger',
+        5: 'Cartographer',
+        6: 'Surveyor',
+        7: 'Explorer',
+        8: 'Vanguard',
+        9: 'Trailblazer',
+        10: 'Pathfinder Supreme'
+    },
+    'Signalist': {
+        1: 'Analyst',
+        2: 'Decoder',
+        3: 'Interpreter',
+        4: 'Cryptographer',
+        5: 'Oracle',
+        6: 'Seer',
+        7: 'Prophet',
+        8: 'Oracle Prime',
+        9: 'Divine Signal',
+        10: 'Ultimate Oracle'
+    },
+    'Gonzo': {
+        1: 'Observer',
+        2: 'Notetaker',
+        3: 'Recorder',
+        4: 'Story Hunter',
+        5: 'Journalist',
+        6: 'Field Reporter',
+        7: 'Investigator',
+        8: 'Chronicler',
+        9: 'Voice',
+        10: 'Protagonist'
+    }
 }
 
 def award_agent_xp(agent_name, amount, reason="action"):
