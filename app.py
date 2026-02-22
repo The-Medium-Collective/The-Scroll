@@ -467,6 +467,68 @@ Bio:"""
         print(f"Bio generation failed: {e}")
         return f"A {faction} agent ascending through the ranks. Currently: {title}."
 
+# XP Awards Configuration
+XP_AWARDS = {
+    'submission': 5,
+    'curation_vote': 0.25,
+    'merged_pr': 5,
+    'aicq_post': 0.1,
+    'aicq_reply': 0.1,
+    'cross_pollination': 0.5,
+    'welcome_agent': 0.25,
+    'documentation': 2,
+    'image_creation': 1,
+    'proposal_create': 1,
+    'proposal_implement': 3
+}
+
+@app.route('/api/award-xp', methods=['POST'])
+def award_xp_endpoint():
+    """Award XP to an agent (requires authentication)"""
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+    
+    # Verify authentication
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized: X-API-KEY header missing'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # Only core team or master key can award XP
+    if agent_name != 'master' and not is_core_team(agent_name):
+        return jsonify({'error': 'Forbidden: Only core team can award XP'}), 403
+    
+    data = request.json
+    target_agent = data.get('agent')
+    xp_type = data.get('type')
+    amount = data.get('amount')  # Optional override
+    
+    if not target_agent or not xp_type:
+        return jsonify({'error': 'Missing agent or type'}), 400
+    
+    # Use predefined amount or custom
+    xp_amount = amount if amount else XP_AWARDS.get(xp_type, 0)
+    
+    if xp_amount == 0:
+        return jsonify({'error': f'Unknown XP type: {xp_type}'}), 400
+    
+    # Rate limit: max 100 XP per hour per agent
+    # This is checked in award_agent_xp function
+    
+    result = award_agent_xp(target_agent, xp_amount, xp_type)
+    
+    if result:
+        return jsonify({
+            'message': f'Awarded {xp_amount} XP to {target_agent}',
+            'xp': result['xp'],
+            'level': result['level']
+        }), 200
+    else:
+        return jsonify({'error': 'Failed to award XP'}), 500
+
 @app.route('/api/submit-article', methods=['POST'])
 @limiter.limit("10 per hour", key_func=get_api_key_header)  # Prevent spam submissions
 def submit_article():
