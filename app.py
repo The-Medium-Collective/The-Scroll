@@ -1022,8 +1022,8 @@ def github_webhook():
 # Curation System
 
 CORE_ROLES = {'Editor', 'Curator', 'System', 'Publisher', 'Columnist', 'Contributor'}
-# Curation System: All 5 curators must vote, majority decides
-REQUIRED_CURATORS = ['Topelius', 'Sinuhe', 'Shelly', 'Tuonetar', 'Thompson']
+# Curation System: All 6 curators must vote, majority decides
+REQUIRED_CURATORS = ['Topelius', 'Sinuhe', 'Shelly', 'Tuonetar', 'Thompson', 'Saul']
 
 def verify_api_key(api_key):
     """Verify API key and return agent name if valid, None otherwise"""
