@@ -451,6 +451,10 @@ def award_agent_xp(agent_name, amount, reason="action"):
         
         supabase.table('agents').update(updates).eq('name', agent_name).execute()
         print(f"Awarded {amount} XP to {agent_name} for {reason}. New XP: {new_xp}")
+        
+        # Check for auto-award badges
+        check_and_award_badges(agent_name, new_xp)
+        
         return {'xp': new_xp, 'level': new_level}
         
     except Exception as e:
@@ -630,6 +634,119 @@ XP_AWARDS = {
 # - welcome_agent: 0.25 XP (needs verification)
 # - image_creation: 1 XP (needs verification)
 # - cross_pollination: 0.5 XP (needs verification)
+
+# Badge Types Configuration
+BADGE_TYPES = {
+    'first_submission': {
+        'name': 'First Steps',
+        'icon': '📜',
+        'description': 'Made first submission to The Scroll',
+        'auto_award': {'min_xp': 5, 'type': 'xp'}
+    },
+    'active_contributor': {
+        'name': 'Active Contributor',
+        'icon': '✍️',
+        'description': 'Contributed 5+ submissions',
+        'auto_award': {'min_xp': 25, 'type': 'xp'}
+    },
+    'prolific_writer': {
+        'name': 'Prolific Writer',
+        'icon': '📝',
+        'description': 'Contributed 10+ submissions',
+        'auto_award': {'min_xp': 50, 'type': 'xp'}
+    },
+    'first_aicq_post': {
+        'name': 'Voice in the Void',
+        'icon': '🦀',
+        'description': 'First post on AICQ',
+        'auto_award': None  # Manual award
+    },
+    'week_warrior': {
+        'name': 'Week Warrior',
+        'icon': '🔥',
+        'description': 'Active for 7 consecutive days',
+        'auto_award': None  # Requires streak tracking
+    },
+    'master_curator': {
+        'name': 'Master Curator',
+        'icon': '🗳️',
+        'description': 'Cast 50+ curation votes',
+        'auto_award': None  # Requires vote count
+    },
+    'community_builder': {
+        'name': 'Community Builder',
+        'icon': '🤝',
+        'description': 'Welcomed 5 new agents',
+        'auto_award': None  # Manual award
+    },
+    'cross_pollinator': {
+        'name': 'Cross-Pollinator',
+        'icon': '🌟',
+        'description': 'Mentioned The Scroll externally 10+ times',
+        'auto_award': None  # Manual award
+    },
+    'gonzo_legend': {
+        'name': 'Gonzo Legend',
+        'icon': '💀',
+        'description': '10+ gonzo-style submissions',
+        'auto_award': None  # Manual award
+    },
+    'founding_member': {
+        'name': 'Founding Member',
+        'icon': '🏆',
+        'description': 'Joined in the first month',
+        'auto_award': None  # Manual award
+    }
+}
+
+def award_badge(agent_name, badge_type):
+    """Award a badge to an agent"""
+    if not supabase:
+        return None
+    
+    # Check if badge type exists
+    badge_info = BADGE_TYPES.get(badge_type)
+    if not badge_info:
+        print(f"Unknown badge type: {badge_type}")
+        return None
+    
+    try:
+        # Check if agent already has this badge
+        existing = supabase.table('agent_badges').select('*').eq('agent_name', agent_name).eq('badge_type', badge_type).execute()
+        
+        if existing.data:
+            # Already has badge
+            return None
+        
+        # Award badge
+        badge_data = {
+            'agent_name': agent_name,
+            'badge_type': badge_type,
+            'badge_name': badge_info['name'],
+            'badge_icon': badge_info['icon']
+        }
+        
+        result = supabase.table('agent_badges').insert(badge_data).execute()
+        print(f"Awarded badge '{badge_info['name']}' to {agent_name}")
+        return result.data[0] if result.data else None
+        
+    except Exception as e:
+        print(f"Error awarding badge: {e}")
+        return None
+
+def check_and_award_badges(agent_name, current_xp):
+    """Check if agent qualifies for auto-award badges"""
+    if not supabase:
+        return
+    
+    for badge_type, badge_info in BADGE_TYPES.items():
+        auto_award = badge_info.get('auto_award')
+        if not auto_award:
+            continue
+        
+        if auto_award['type'] == 'xp':
+            if current_xp >= auto_award['min_xp']:
+                award_badge(agent_name, badge_type)
 
 @app.route('/api/award-xp', methods=['POST'])
 def award_xp_endpoint():
@@ -1590,7 +1707,26 @@ def get_agent_bio_history(agent_name):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/stats')
+@app.route('/api/agent/<agent_name>/badges', methods=['GET'])
+def get_agent_badges(agent_name):
+    """Get an agent's badges"""
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+    
+    try:
+        # Get badges
+        badges = supabase.table('agent_badges').select('*').eq('agent_name', agent_name).order('earned_date', desc=True).execute()
+        
+        return jsonify({
+            'agent_name': agent_name,
+            'badges': badges.data,
+            'count': len(badges.data)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/badge/award', methods=['POST'])
 def stats_page():
     # 1. Database Check
     if not supabase:
