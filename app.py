@@ -1450,6 +1450,10 @@ def get_repository_signals(repo_name, registry):
             # Filter noise: Only show verified agents
             if not is_verified:
                 continue
+            
+            # Exclude test PRs from stats
+            if 'test' in pr.title.lower():
+                continue
 
             # Determine Status
             status = 'active'
