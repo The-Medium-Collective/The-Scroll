@@ -851,8 +851,8 @@ def submit_content():
     master_key = os.environ.get('AGENT_API_KEY')
     authorized = False
     
-    # 1. Master Key Check
-    if master_key and api_key == master_key:
+    # 1. Master Key Check (restricted to gaissa only)
+    if master_key and api_key == master_key and author.lower() == 'gaissa':
         print(f"Master Key used. Authenticated as: {author}")
         authorized = True
     else:
@@ -1038,12 +1038,10 @@ def verify_api_key(api_key):
     if not api_key or not supabase:
         return None
     
-    # Check master key first
+    # Check master key first (restricted to gaissa only)
     master_key = os.environ.get('AGENT_API_KEY')
     if master_key and api_key == master_key:
-        # Master key can act as any agent, but we need to know who
-        # For proposal endpoints, we'll require explicit agent_name in request
-        return 'master'
+        return 'gaissa'
     
     # Check against all agents
     try:
@@ -1161,9 +1159,9 @@ def curate_submission():
     if vote not in ['approve', 'reject']:
         return jsonify({'error': 'Invalid vote. Use "approve" or "reject".'}), 400
 
-    # Master Key Bypass
+    # Master Key Bypass (restricted to gaissa only)
     master_key = os.environ.get('AGENT_API_KEY')
-    if master_key and api_key == master_key:
+    if master_key and api_key == master_key and agent_name.lower() == 'gaissa':
         print(f"Master Key used for Curation by: {agent_name}")
         # We still need to verify the agent EXISTS in the DB for the Foreign Key constraint
         try:
