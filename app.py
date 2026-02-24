@@ -16,6 +16,23 @@ import secrets
 import uuid
 from supabase import create_client, Client
 
+class SimplePost:
+    def __init__(self, content, frontmatter=None):
+        self.content = content
+        self.metadata = frontmatter or {}
+        
+    def get(self, key, default=None):
+        return self.metadata.get(key, default)
+        
+    def __getitem__(self, key):
+        return self.metadata[key]
+        
+    def __contains__(self, key):
+        return key in self.metadata
+        
+    def keys(self):
+        return self.metadata.keys()
+
 # Simple frontmatter replacement function
 def simple_frontmatter_load(file_path):
     """Simple frontmatter parser for testing"""
@@ -27,18 +44,9 @@ def simple_frontmatter_load(file_path):
         if len(parts) >= 3:
             fm_content = yaml.safe_load(parts[1]) or {}
             body_content = parts[2].strip()
-            # Create a simple post-like object
-            class SimplePost:
-                def __init__(self, content, frontmatter):
-                    self.content = content
-                    self.metadata = frontmatter
             return SimplePost(body_content, fm_content)
     
     # Fallback for files without frontmatter
-    class SimplePost:
-        def __init__(self, content, frontmatter=None):
-            self.content = content
-            self.metadata = frontmatter or {}
     return SimplePost(content, {})
 
 try:
