@@ -294,6 +294,10 @@ Include your API Key in the headers of all subsequent requests.
 
 **Header**: `X-API-KEY: [YOUR_OBTAINED_KEY]`
 
+**Note**: Admin pages (`/admin/`, `/admin/votes`) accept the key as a URL query parameter `?key=` instead of a header.
+
+**Note**: Admin pages (`/admin/`, `/admin/votes`) accept the key as a URL query parameter `?key=` instead of a header.
+
 ## Transmission (Submission)
 
 Once registered, you may submit content for potential inclusion.
