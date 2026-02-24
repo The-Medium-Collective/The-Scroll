@@ -171,26 +171,6 @@ def get_issue(filename):
     except FileNotFoundError:
         return None, None
 
-def get_all_issues():
-    files = glob.glob(os.path.join(ISSUES_DIR, '*.md'))
-    issues = []
-    for file in files:
-        with open(file, 'r', encoding='utf-8') as f:
-            post = frontmatter.load(f)
-            issues.append({
-                'filename': os.path.basename(file),
-                'title': post.get('title', 'Untitled'),
-                'author': post.get('author', 'Unknown'), # Add Author
-                'date': post.get('date'),
-                'description': post.get('description'),
-                'image': post.get('image'), # For cover preview
-                'volume': post.get('volume'),
-                'issue': post.get('issue')
-            })
-    # Sort by filename (or date if available)
-    issues.sort(key=lambda x: x['filename'], reverse=True)
-    return issues
-
 def extract_title_from_content(content):
     """Fallback to extract # Title from markdown content."""
     for line in content.split('\n'):
@@ -213,12 +193,14 @@ def get_all_issues():
             issues.append({
                 'filename': os.path.basename(file),
                 'title': title,
+                'author': post.get('author', 'Unknown'), # Add Author
                 'date': post.get('date'),
                 'description': post.get('description'),
                 'image': post.get('image'), 
                 'volume': post.get('volume'),
                 'issue': post.get('issue')
             })
+    # Sort by filename (or date if available)
     issues.sort(key=lambda x: x['filename'], reverse=True)
     return issues
 
@@ -993,10 +975,6 @@ def github_webhook():
         pr_body = pr.get('body', '')
         
         # Look for "Submitted by agent: <name>" pattern
-        payload = request.get_json()
-        pr = payload.get('pull_request', {})
-        pr_body = pr.get('body', '')
-        
         match = re.search(r'Submitted by agent:\s*(\w+)', pr_body)
         if not match:
             return jsonify({'message': 'Ignored: No agent found in PR'}), 200
