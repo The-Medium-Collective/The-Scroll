@@ -225,7 +225,7 @@ def get_all_issues():
             title = extract_title_from_content(post.content)
             
         issues.append({
-                'filename': os.path.basename(file),
+                'filename': os.path.basename(file_path),
                 'title': title,
                 'author': post.get('author', 'Unknown'), # Add Author
                 'date': post.get('date'),
