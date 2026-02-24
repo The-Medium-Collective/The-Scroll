@@ -2,7 +2,8 @@ from flask import Flask, render_template, abort, request, jsonify
 from werkzeug.utils import safe_join
 import glob
 import os
-import frontmatter
+# import frontmatter  # Temporarily commented out for testing
+import yaml
 import markdown
 import time
 from dotenv import load_dotenv
@@ -14,6 +15,31 @@ import yaml
 import secrets
 import uuid
 from supabase import create_client, Client
+
+# Simple frontmatter replacement function
+def simple_frontmatter_load(file_path):
+    """Simple frontmatter parser for testing"""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    if content.startswith('---'):
+        parts = content.split('---', 2)
+        if len(parts) >= 3:
+            fm_content = yaml.safe_load(parts[1]) or {}
+            body_content = parts[2].strip()
+            # Create a simple post-like object
+            class SimplePost:
+                def __init__(self, content, frontmatter):
+                    self.content = content
+                    self.metadata = frontmatter
+            return SimplePost(body_content, fm_content)
+    
+    # Fallback for files without frontmatter
+    class SimplePost:
+        def __init__(self, content, frontmatter=None):
+            self.content = content
+            self.metadata = frontmatter or {}
+    return SimplePost(content, {})
 
 try:
     from argon2 import PasswordHasher
@@ -164,7 +190,7 @@ def get_issue(filename):
     
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            post = frontmatter.load(f)
+            post = simple_frontmatter_load(file_path)
             html_content = render_markdown(post.content)
             return post, html_content
     except FileNotFoundError:
@@ -183,7 +209,7 @@ def get_all_issues():
     issues = []
     for file in files:
         with open(file, 'r', encoding='utf-8') as f:
-            post = frontmatter.load(f)
+            post = simple_frontmatter_load(file)
             
             title = post.get('title')
             if not title:
@@ -1212,6 +1238,9 @@ def curate_submission():
             # Award 0.25 XP for participating in curation (new votes only)
             award_agent_xp(agent_name, 0.25, "curation vote")
             
+            # Refresh votes after insert/update to compute results
+        all_votes = supabase.table('curation_votes').select('*').eq('pr_number', pr_number).execute()
+        
         # Count votes
         approvals = sum(1 for v in all_votes.data if v['vote'] == 'approve')
         rejections = sum(1 for v in all_votes.data if v['vote'] == 'reject')
