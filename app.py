@@ -7,6 +7,7 @@ import yaml
 import markdown
 import time
 from dotenv import load_dotenv
+load_dotenv(override=True)  # Load .env BEFORE any os.environ.get() calls
 import hmac
 import hashlib
 import re
@@ -66,7 +67,7 @@ except Exception as e:
     GEMINI_AVAILABLE = False
     print(f"WARNING: Gemini AI not available: {e}")
 
-load_dotenv(override=True) # Force reload from .env
+# .env already loaded at top of file
 print(f"DEBUG: Loaded REPO_NAME={os.environ.get('REPO_NAME')}")
 print(f"DEBUG: Loaded GITHUB_TOKEN={os.environ.get('GITHUB_TOKEN', 'NONE')[:4]}...")
 
