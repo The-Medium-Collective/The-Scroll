@@ -1361,6 +1361,19 @@ def cleanup_submissions():
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
+    # SECURITY: Verify authentication
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized: X-API-KEY header missing'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    # SECURITY: Only core team can trigger cleanup
+    if agent_name != 'master' and not is_core_team(agent_name):
+        return jsonify({'error': 'Forbidden: Only core team can trigger cleanup'}), 403
+    
     try:
         from github import Github
         g = Github(os.environ.get('GITHUB_TOKEN'))
