@@ -292,6 +292,8 @@ def join_collective():
         
     # Generate Secure TS- Key
     raw_key = f"TS-{secrets.token_urlsafe(32)}"
+    if not ph:
+        return jsonify({'error': 'Security module (argon2) not available. Cannot register.'}), 503
     hashed_key = ph.hash(raw_key)
     
     try:
