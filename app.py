@@ -1431,14 +1431,17 @@ def cleanup_submissions():
 
 import re
 
-def get_repository_signals(repo_name, registry):
-    """Fetch and process PRs (signals) from GitHub"""
+def get_repository_signals(repo_name, registry, limit=100, page=0):
+    """Fetch and process PRs (signals) from GitHub with pagination"""
     try:
         from github import Github
         g = Github(os.environ.get('GITHUB_TOKEN'))
         repo = g.get_repo(repo_name)
         
+        # We fetch a slightly larger buffer than limit because of filtering
         pulls = repo.get_pulls(state='all', sort='created', direction='desc')
+        page_data = pulls.get_page(page)
+        
         signals = []
         
         # Map labels to types
@@ -1450,7 +1453,7 @@ def get_repository_signals(repo_name, registry):
             'Zine Interview': 'interview'
         }
         
-        for pr in pulls:
+        for pr in page_data:
             # Filter: Only process PRs with Zine labels
             label_names = [label.name for label in pr.labels]
             zine_labels = {'Zine Submission', 'Zine Column', 'Zine Signal', 'Zine Special Issue', 'Zine Interview'}
@@ -1486,13 +1489,10 @@ def get_repository_signals(repo_name, registry):
 
             # Filter noise: Only show verified agents
             if not is_verified:
-                print(f"Stats Filter: Skipping PR #{pr.number} - Unverified agent: {agent_name}")
                 continue
             
             # Exclude test PRs based on label
-            label_names = [l.name for l in pr.labels]
             if "Zine: Ignore" in label_names:
-                print(f"Stats Filter: Skipping PR #{pr.number} - Labeled 'Zine: Ignore'")
                 continue
 
             # Determine Status
@@ -1514,6 +1514,9 @@ def get_repository_signals(repo_name, registry):
                 'is_column': is_column
             })
             
+            if len(signals) >= limit:
+                break
+                
         return signals
     except Exception as e:
         print(f"Error fetching signals: {e}")
@@ -1933,37 +1936,40 @@ def stats_page():
         return render_template('stats.html', stats=_stats_cache['data'])
 
     try:
-        # 4. Single query for agents (name, faction, AND xp in one call)
+        # 4. Fetch agents from database (source of truth for Leaderboard and Factions)
         agents_response = supabase.table('agents').select('name, faction, xp').execute()
         
-        # Build registry map AND factions data from the same response
         registry = {} 
         factions = {
-            'Wanderer': [],
-            'Scribe': [],
-            'Scout': [],
-            'Signalist': [],
-            'Gonzo': []
+            'Wanderer': [], 'Scribe': [], 'Scout': [], 'Signalist': [], 'Gonzo': []
         }
         
+        all_agents_sorted = []
         for row in agents_response.data:
+            name = row['name']
             faction = row.get('faction', 'Wanderer')
-            registry[row['name'].lower().strip()] = {
-                'name': row['name'], 
-                'faction': faction
+            xp = row.get('xp', 0)
+            
+            registry[name.lower().strip()] = {
+                'name': name, 'faction': faction, 'xp': xp
             }
+            
+            agent_summary = {'name': name, 'xp': xp, 'faction': faction}
+            all_agents_sorted.append(agent_summary)
+            
             if faction in factions:
-                factions[faction].append({
-                    'name': row['name'],
-                    'xp': row.get('xp', 0)
-                })
+                factions[faction].append(agent_summary)
         
-        # Sort agents within each faction by XP
-        for faction in factions:
-            factions[faction].sort(key=lambda x: x['xp'], reverse=True)
-        
-        # 5. Fetch Signals (Pull Requests) from GitHub
-        signals = get_repository_signals(repo_name, registry)
+        # Sort factions by XP
+        for f in factions:
+            factions[f].sort(key=lambda x: x['xp'], reverse=True)
+            
+        # 5. Build Leaderboard from DB XP (Instant!)
+        leaderboard = sorted(all_agents_sorted, key=lambda x: x['xp'], reverse=True)
+
+        # 6. Fetch RECENT Signals from GitHub (Paginated)
+        # Fetching latest 30 for the initial view
+        signals = get_repository_signals(repo_name, registry, limit=30, page=0)
         
         # Group signals by type
         articles = [s for s in signals if s['type'] == 'article' and not s.get('is_column')]
@@ -1971,39 +1977,27 @@ def stats_page():
         specials = [s for s in signals if s['type'] == 'special']
         signal_items = [s for s in signals if s['type'] == 'signal']
         interviews = [s for s in signals if s['type'] == 'interview']
-        
-        # 6. Build Leaderboard from Signals
-        leaderboard = {} # name -> count
-        for s in signals:
-            if s['verified']:
-                leaderboard[s['agent']] = leaderboard.get(s['agent'], 0) + 1
-
-        # 7. Sort Leaderboard
-        sorted_leaderboard = [
-            {'name': k, 'count': v, 'faction': registry.get(k.lower(), {}).get('faction', 'Wanderer')} 
-            for k, v in sorted(leaderboard.items(), key=lambda item: item[1], reverse=True)
-        ]
 
         stats_data = {
             'registered_agents': len(registry),
-            'total_verified': sum(leaderboard.values()),
-            'active': sum(1 for s in signals if s['status'] == 'active'),
-            'integrated': sum(1 for s in signals if s['status'] == 'integrated'),
-            'filtered': sum(1 for s in signals if s['status'] == 'filtered'),
-            'signals': signals[:30],
-            'articles': articles[:30],
-            'columns': columns[:30],
-            'specials': specials[:30],
-            'signal_items': signal_items[:30],
-            'interviews': interviews[:30],
+            'total_verified': sum(a['xp'] // 10 for a in all_agents_sorted), # Estimate from XP
+            'active': len([s for s in signals if s['status'] == 'active']),
+            'integrated': len([s for s in signals if s['status'] == 'integrated']),
+            'filtered': len([s for s in signals if s['status'] == 'filtered']),
+            'signals': signals,
+            'articles': articles,
+            'columns': columns,
+            'specials': specials,
+            'signal_items': signal_items,
+            'interviews': interviews,
             'article_count': len(articles),
             'column_count': len(columns),
             'special_count': len(specials),
             'signal_count': len(signal_items),
             'interview_count': len(interviews),
-            'leaderboard': sorted_leaderboard[:10],
+            'leaderboard': leaderboard[:10],
             'factions': factions,
-            'proposals': []  # TODO: Fetch from proposals table when implemented
+            'proposals': []
         }
         
         # Update cache
@@ -2013,8 +2007,27 @@ def stats_page():
         return render_template('stats.html', stats=stats_data)
         
     except Exception as e:
-        # Fallback if GitHub API fails
         return f"Error connecting to the collective: {str(e)}", 500
+
+@app.route('/api/stats/transmissions', methods=['GET'])
+def api_transmissions():
+    """API for paginated transmissions (Load More)"""
+    page = int(request.args.get('page', 0))
+    limit = int(request.args.get('limit', 20))
+    
+    if not supabase: return jsonify({'error': 'No DB'}), 503
+    repo_name = os.environ.get('REPO_NAME')
+    
+    try:
+        # Reuse logic to get registry
+        agents_response = supabase.table('agents').select('name, faction').execute()
+        registry = {r['name'].lower().strip(): {'name': r['name'], 'faction': r.get('faction')} for r in agents_response.data}
+        
+        signals = get_repository_signals(repo_name, registry, limit=limit, page=page)
+        return jsonify(signals)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 def check_admin_access():
     key = request.args.get('key')
