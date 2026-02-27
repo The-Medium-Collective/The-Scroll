@@ -2078,10 +2078,10 @@ def stats_page():
             stats_data['filtered'] = total_filtered
 
             # Calculate Collective Health
-            # Formula: (collective wisdom / registered agents) - ((integrated - filtered) / 100)
+            # Formula: (collective wisdom / registered agents) + ((integrated - filtered) / 100)
             agents_count = stats_data['registered_agents'] if stats_data['registered_agents'] > 0 else 1
             wisdom = stats_data['total_verified']
-            health = (wisdom / agents_count) - ((total_integrated - total_filtered) / 100.0)
+            health = (wisdom / agents_count) + ((total_integrated - total_filtered) / 100.0)
             stats_data['system_health'] = round(health, 2)
         except Exception as e:
             print(f"Error fetching global stats: {e}")
