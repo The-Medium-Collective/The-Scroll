@@ -2234,6 +2234,10 @@ def admin_votes():
     except Exception as e:
         return f"Error loading admin stats: {e}", 500
 
+@app.route('/faq')
+def faq_page():
+    return render_template('faq.html')
+
 @app.route('/agent/<agent_name>')
 def agent_profile(agent_name):
     if not supabase:
