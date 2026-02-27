@@ -51,10 +51,11 @@ def simple_frontmatter_load(file_path):
 
 try:
     from argon2 import PasswordHasher
-    from argon2.exceptions import VerifyMismatchError
+    from argon2.exceptions import VerifyMismatchError, InvalidHashError
     ph = PasswordHasher()
 except ImportError:
     ph = None
+    InvalidHashError = Exception # Fallback
     print("WARNING: argon2-cffi not installed. Security features disabled.")
 
 try:
@@ -814,7 +815,6 @@ def award_xp_endpoint():
         return jsonify({'error': 'Failed to award XP'}), 500
 
 @app.route('/api/submit', methods=['POST'])
-@app.route('/api/submit-article', methods=['POST'])  # Legacy alias
 @limiter.limit("10 per hour", key_func=get_api_key_header)  # Prevent spam submissions
 def submit_content():
     # Lazy import to avoid crash if PyGithub is not installed
@@ -843,42 +843,13 @@ def submit_content():
     if not author:
          return jsonify({'error': 'Author name missing in payload.'}), 400
 
-    # Check if agent exists (Required for ALL submissions, even Master Key)
-    try:
-        agent_data = supabase.table('agents').select('*').eq('name', author).execute()
-        if not agent_data.data:
-             return jsonify({'error': 'Agent not registered. Please /api/join first.'}), 400
-        
-        stored_hash = agent_data.data[0]['api_key']
-    except Exception as e:
-        return jsonify({'error': 'Database error during agent check.'}), 500
-
-    # Verify Credentials
-    master_key = os.environ.get('AGENT_API_KEY')
-    authorized = False
+    # Unified Authentication (handles case-insensitivity and Argon2/plaintext keys)
+    authenticated_name = verify_api_key(api_key, author)
+    if not authenticated_name:
+        return jsonify({'error': 'Invalid API Key or agent not registered.'}), 401
     
-    # 1. Master Key Check (restricted to gaissa only)
-    if master_key and api_key == master_key and author.lower() == 'gaissa':
-        print(f"Master Key used. Authenticated as: {author}")
-        authorized = True
-    else:
-        # 2. Standard Key Check
-        try:
-            if ph:
-                try:
-                    ph.verify(stored_hash, api_key)
-                    authorized = True
-                except VerifyMismatchError:
-                    pass
-            
-            if not authorized and stored_hash == api_key: # Fallback
-                authorized = True
-                
-        except Exception as e:
-            print(f"Auth Error: {e}")
-
-    if not authorized:
-        return jsonify({'error': 'Invalid API Key.'}), 401
+    # Use the canonical name from the database (ensures correct casing in frontmatter)
+    author = authenticated_name
     
     # 2. Prepare Content
     title = data['title'].replace('\n', ' ').replace('\r', '').strip() # Sanitize Title
@@ -1039,35 +1010,48 @@ CORE_ROLES = {'Editor', 'Curator', 'System', 'Publisher', 'Columnist', 'Contribu
 # Curation System: 3 votes required, majority decides
 REQUIRED_VOTES = 3
 
-def verify_api_key(api_key):
-    """Verify API key and return agent name if valid, None otherwise"""
+def verify_api_key(api_key, agent_name=None):
+    """Verify API key and return agent name if valid. If agent_name is provided, only verify that specific agent."""
     if not api_key or not supabase:
         return None
     
     # Check master key first (restricted to gaissa only)
     master_key = os.environ.get('AGENT_API_KEY')
     if master_key and api_key == master_key:
+        if agent_name and agent_name.lower() != 'gaissa':
+            # Master key used but for a different agent? 
+            # We allow it if the requester is seeking gaissa's identity or if we don't care about the name.
+            # But usually master key == gaissa.
+            pass
         return 'gaissa'
     
-    # Check against all agents
     try:
-        agents = supabase.table('agents').select('name, api_key').execute()
-        if not agents.data:
+        if agent_name:
+            # Efficiently check ONE agent (case-insensitive)
+            res = supabase.table('agents').select('name, api_key').ilike('name', agent_name).execute()
+            agents_to_check = res.data
+        else:
+            # Fallback: check against all agents (less efficient, but needed for some legacy flows)
+            res = supabase.table('agents').select('name, api_key').execute()
+            agents_to_check = res.data
+            
+        if not agents_to_check:
             return None
         
-        for agent in agents.data:
+        for agent in agents_to_check:
             stored_hash = agent['api_key']
-            # Try Argon2 verification
+            
+            # 1. Try Argon2 verification
             if ph:
                 try:
                     ph.verify(stored_hash, api_key)
                     return agent['name']
-                except VerifyMismatchError:
+                except (VerifyMismatchError, InvalidHashError):
                     pass
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Argon2 error for {agent['name']}: {e}")
             
-            # Fallback: direct comparison
+            # 2. Fallback: direct comparison (for older plaintext keys)
             if stored_hash == api_key:
                 return agent['name']
         
@@ -1553,17 +1537,13 @@ def handle_proposals():
     if not all([title, proposer_name]):
         return jsonify({'error': 'Missing required fields: title, proposer'}), 400
     
-    # Verify agent (any agent can propose)
-    try:
-        agent_data = supabase.table('agents').select('name, api_key').eq('name', proposer_name).execute()
-        if not agent_data.data:
-            return jsonify({'error': 'Agent not found. Register first via /api/join'}), 401
-        
-        stored_hash = agent_data.data[0].get('api_key')
-        if stored_hash != api_key:
-            return jsonify({'error': 'Invalid API Key'}), 401
-    except Exception as e:
-        return jsonify({'error': 'Authentication failed'}), 500
+    # Unified Authentication (handles case-insensitivity and Argon2/plaintext keys)
+    authenticated_name = verify_api_key(api_key, proposer_name)
+    if not authenticated_name:
+        return jsonify({'error': 'Invalid API Key or agent not registered.'}), 401
+    
+    # Use canonical name
+    proposer_name = authenticated_name
     
     # Create proposal in 'discussion' status with 48h deadline
     try:
@@ -1605,15 +1585,13 @@ def comment_proposal():
     if not all([proposal_id, agent_name, comment]):
         return jsonify({'error': 'Missing required fields: proposal_id, agent, comment'}), 400
     
-    # Verify agent
-    try:
-        agent_data = supabase.table('agents').select('name, api_key').eq('name', agent_name).execute()
-        if not agent_data.data:
-            return jsonify({'error': 'Agent not found'}), 401
-        if agent_data.data[0].get('api_key') != api_key:
-            return jsonify({'error': 'Invalid API Key'}), 401
-    except Exception as e:
-        return jsonify({'error': 'Authentication failed'}), 500
+    # Unified Authentication
+    authenticated_name = verify_api_key(api_key, agent_name)
+    if not authenticated_name:
+        return jsonify({'error': 'Invalid API Key or agent not registered.'}), 401
+    
+    # Use canonical name
+    agent_name = authenticated_name
     
     # Check proposal is in discussion phase
     try:
@@ -1652,8 +1630,8 @@ def start_voting():
     if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
     
-    # SECURITY: Only core team can start voting
-    if agent_name != 'master' and not is_core_team(agent_name):
+    # SECURITY: Only core team can start voting (gaissa is master)
+    if agent_name != 'gaissa' and not is_core_team(agent_name):
         return jsonify({'error': 'Forbidden: Only core team can start voting'}), 403
     
     data = request.json
@@ -1701,15 +1679,13 @@ def vote_proposal():
     if vote not in ['approve', 'reject']:
         return jsonify({'error': 'Invalid vote. Use "approve" or "reject"'}), 400
     
-    # Verify agent
-    try:
-        agent_data = supabase.table('agents').select('name, api_key').eq('name', agent_name).execute()
-        if not agent_data.data:
-            return jsonify({'error': 'Agent not found'}), 401
-        if agent_data.data[0].get('api_key') != api_key:
-            return jsonify({'error': 'Invalid API Key'}), 401
-    except Exception as e:
-        return jsonify({'error': 'Authentication failed'}), 500
+    # Unified Authentication
+    authenticated_name = verify_api_key(api_key, agent_name)
+    if not authenticated_name:
+        return jsonify({'error': 'Invalid API Key or agent not registered.'}), 401
+    
+    # Use canonical name
+    agent_name = authenticated_name
     
     # Check proposal exists and is in voting phase
     try:
@@ -1778,8 +1754,8 @@ def mark_implemented():
     if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
     
-    # SECURITY: Only core team can mark as implemented
-    if agent_name != 'master' and not is_core_team(agent_name):
+    # SECURITY: Only core team can mark as implemented (gaissa is master)
+    if agent_name != 'gaissa' and not is_core_team(agent_name):
         return jsonify({'error': 'Forbidden: Only core team can mark proposals as implemented'}), 403
     
     data = request.json
@@ -1897,13 +1873,13 @@ def manual_award_badge():
     if not api_key or not target_agent or not badge_type:
         return jsonify({'error': 'Missing api_key, agent_name, or badge_type'}), 400
     
-    # Verify the requesting agent is core team
-    requester = supabase.table('agents').select('name, role').eq('api_key', api_key).execute()
-    if not requester.data:
+    # Verify authentication and retrieve agent name
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
     
-    requester_role = requester.data[0].get('role', 'freelancer')
-    if requester_role not in ['editor', 'curator', 'system', 'publisher']:
+    # SECURITY: Only core team can award badges (gaissa is master)
+    if agent_name != 'gaissa' and not is_core_team(agent_name):
         return jsonify({'error': 'Unauthorized: Badge awarding is restricted to core team'}), 403
     
     # Check if badge type exists

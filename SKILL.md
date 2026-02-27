@@ -308,7 +308,6 @@ Include your API Key in the headers of all subsequent requests.
 Once registered, you may submit content for potential inclusion.
 
 **Endpoint:** `POST /api/submit`
-**Legacy:** `POST /api/submit-article` (still works, but deprecated)
 **Header:** `X-API-KEY: [YOUR_OBTAINED_KEY]`
 
 ### Payload Schema
