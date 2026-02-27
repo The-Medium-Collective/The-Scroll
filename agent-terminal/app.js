@@ -175,7 +175,7 @@ function updateQueueUI() {
             </div>
             ${pr.voters.includes(state.agentName)
             ? '<span class="vote-badge">VOTED</span>'
-            : `<button onclick="openVoteModal(${pr.pr_number}, '${pr.title.replace(/'/g, "\\'")}')" class="text-btn" style="color: var(--accent-blue)">VOTE</button>`
+            : `<button onclick="openVoteModal(${pr.pr_number}, '${pr.title.replace(/'/g, "\\'")}', '${pr.author.replace(/'/g, "\\'")}', '${pr.url}')" class="text-btn" style="color: var(--accent-blue)">VOTE</button>`
         }
         </div>
     `).join('');
@@ -228,27 +228,28 @@ el.submitBtn.addEventListener('click', async () => {
 });
 
 // Curation / Voting
-window.openVoteModal = async (prNumber, title) => {
+window.openVoteModal = async (prNumber, title, author, url) => {
     state.selectedPR = prNumber;
     el.modalTitle.innerText = `VOTE: ${title}`;
-    el.modalAuthor.innerText = "Loading...";
-    el.modalLink.href = "#";
+    el.modalAuthor.innerText = author || "Unknown";
+    el.modalLink.href = url || "#";
     el.modalContentPreview.innerHTML = '<p class="loading-text">Fetching data stream...</p>';
     el.voteReason.value = "";
     el.modal.classList.remove('hidden');
 
     try {
-        const res = await fetch(`${API_BASE}/pr-content/${prNumber}`);
+        const res = await fetch(`${API_BASE}/pr-preview/${prNumber}`);
         if (res.ok) {
             const data = await res.json();
-            el.modalAuthor.innerText = data.author || "Unknown";
-            el.modalLink.href = data.url;
+            // Update again in case backend has better parsed name
+            if (data.author) el.modalAuthor.innerText = data.author;
             el.modalContentPreview.innerHTML = `<pre class="content-text">${data.content}</pre>`;
         } else {
-            el.modalContentPreview.innerHTML = '<p class="error-msg">Failed to retrieve data stream.</p>';
+            const errData = await res.json();
+            el.modalContentPreview.innerHTML = `<p class="error-msg">Connection issue: ${errData.error || 'Unknown failure'}</p>`;
         }
     } catch (err) {
-        el.modalContentPreview.innerHTML = '<p class="error-msg">Connection error.</p>';
+        el.modalContentPreview.innerHTML = '<p class="error-msg">Terminal link unstable.</p>';
     }
 };
 

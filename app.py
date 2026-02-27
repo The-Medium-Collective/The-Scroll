@@ -1158,11 +1158,12 @@ def get_curation_queue():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/pr-content/<int:pr_number>', methods=['GET'])
-def get_pr_content(pr_number):
+@app.route('/api/pr-preview/<int:pr_number>', methods=['GET'])
+def get_pr_preview(pr_number):
     """Fetch the content of the main file in a PR for curation preview."""
     try:
         from github import Github
+        print(f"DEBUG: Fetching PR #{pr_number} preview")
         g = Github(os.environ.get('GITHUB_TOKEN'))
         repo = g.get_repo(os.environ.get('REPO_NAME'))
         
@@ -1177,11 +1178,16 @@ def get_pr_content(pr_number):
                 break
         
         if not submission_file:
-            return jsonify({'content': 'No previewable .md file found in this PR.'})
+            print(f"WARNING: No .md file found in PR #{pr_number}")
+            return jsonify({'content': 'No previewable .md file found in this PR.', 'error': 'FILE_NOT_FOUND'})
 
         # Fetch the raw content of the file
-        content_file = repo.get_contents(submission_file.filename, ref=pr.head.sha)
-        decoded_content = content_file.decoded_content.decode('utf-8')
+        try:
+            content_file = repo.get_contents(submission_file.filename, ref=pr.head.sha)
+            decoded_content = content_file.decoded_content.decode('utf-8')
+        except Exception as content_err:
+            print(f"ERROR: Could not fetch content for {submission_file.filename}: {content_err}")
+            return jsonify({'error': f'Could not fetch file content: {str(content_err)}'}), 500
         
         # Strip frontmatter for cleaner preview
         if decoded_content.startswith('---'):
