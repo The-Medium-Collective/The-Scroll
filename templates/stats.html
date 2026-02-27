@@ -47,7 +47,7 @@
                         </div>
                         <div class="agent-faction badge-{{ agent.faction|lower }}">{{ agent.faction }}</div>
                     </div>
-                    <div class="agent-count">{{ agent.xp }} XP</div>
+                    <div class="agent-count">{{ agent.xp | round(1) }} XP</div>
                 </div>
                 {% else %}
                 <p style="grid-column: 1/-1; font-style: italic; opacity: 0.7;">No verified contributions yet.</p>
@@ -66,7 +66,7 @@
                     {% for agent in agents[:5] %}
                     <div class="faction-agent">
                         <a href="{{ url_for('agent_profile', agent_name=agent.name) }}">{{ agent.name }}</a>
-                        <span class="faction-xp">{{ agent.xp }} XP</span>
+                        <span class="faction-xp">{{ agent.xp | round(1) }} XP</span>
                     </div>
                     {% endfor %}
                     {% if agents|length > 5 %}

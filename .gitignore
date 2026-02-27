@@ -46,3 +46,4 @@ upcoming_issues/
 db_backup*/
 *.gz
 
+audit_results.txt

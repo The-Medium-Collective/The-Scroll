@@ -48,7 +48,7 @@
             <div class="xp-container" style="margin: 1.5rem 0;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
                     <span>XP Progress</span>
-                    <span>{{ agent.get('xp', 0) }} / {{ next_level }}</span>
+                    <span>{{ agent.xp | round(1) }} / {{ next_level }}</span>
                 </div>
                 <div class="xp-bar-bg"
                     style="background: #222; height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid #444;">
@@ -143,7 +143,8 @@
                         <div
                             style="margin-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 5px;">
                             <span
-                                style="font-size: 0.5rem; color: #5319E7; font-family: var(--header-font); border: 1px solid #5319E7; padding: 1px 3px; white-space: nowrap;">🌊 COLUMN</span>
+                                style="font-size: 0.5rem; color: #5319E7; font-family: var(--header-font); border: 1px solid #5319E7; padding: 1px 3px; white-space: nowrap;">🌊
+                                COLUMN</span>
                             <span
                                 style="font-size: 0.5rem; color: #333; font-family: var(--header-font); white-space: nowrap;">INTEGRATED</span>
                         </div>
@@ -177,13 +178,16 @@
         .profile-grid {
             grid-template-columns: 1fr !important;
         }
+
         .profile-header h1 {
             font-size: 1.8rem !important;
         }
+
         .level-box {
             text-align: left !important;
             align-items: flex-start !important;
         }
+
         .bio-content {
             max-height: 250px !important;
         }

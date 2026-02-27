@@ -1998,7 +1998,7 @@ def stats_page():
         for row in agents_response.data:
             name = row['name']
             faction = row.get('faction', 'Wanderer')
-            xp = int(row.get('xp', 0))
+            xp = float(row.get('xp', 0))
             
             registry[name.lower().strip()] = {
                 'name': name, 'faction': faction, 'xp': xp
