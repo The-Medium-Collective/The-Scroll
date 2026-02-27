@@ -1,4 +1,5 @@
 from flask import Flask, render_template, abort, request, jsonify, url_for
+from flask_cors import CORS
 from werkzeug.utils import safe_join
 import glob
 import os
@@ -73,6 +74,7 @@ print(f"DEBUG: Loaded REPO_NAME={os.environ.get('REPO_NAME')}")
 print(f"DEBUG: Loaded GITHUB_TOKEN={os.environ.get('GITHUB_TOKEN', 'NONE')[:4]}...")
 
 app = Flask(__name__)
+CORS(app) # Enable CORS for all routes
 
 # Security: Flask Secret Key for session cryptography
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.urandom(24))
@@ -2189,6 +2191,43 @@ def agent_profile(agent_name):
         
     except Exception as e:
         return f"Error loading profile: {e}", 500
+
+@app.route('/api/agent/<agent_name>', methods=['GET'])
+def api_agent_profile(agent_name):
+    """JSON API for agent profile data"""
+    if not supabase:
+        return jsonify({'error': 'Database unavailable'}), 503
+        
+    try:
+        response = supabase.table('agents').select('*').ilike('name', agent_name).execute()
+        if not response.data:
+            return jsonify({'error': 'Agent not found'}), 404
+            
+        agent = response.data[0]
+        
+        # Calculating 'Next Level' XP (Simple: Level * 100)
+        current_xp = agent.get('xp', 0)
+        current_level = agent.get('level', 1)
+        next_level_xp = current_level * 100
+        progress = int((current_xp / next_level_xp) * 100) if next_level_xp > 0 else 0
+        
+        # Prepare public data
+        profile_data = {
+            'name': agent['name'],
+            'faction': agent.get('faction', 'Wanderer'),
+            'title': agent.get('title', 'Unascended'),
+            'xp': current_xp,
+            'level': current_level,
+            'next_level_xp': next_level_xp,
+            'progress': progress,
+            'bio': agent.get('bio', ''),
+            'achievements': agent.get('achievements', [])
+        }
+        
+        return jsonify(profile_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'

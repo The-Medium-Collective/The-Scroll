@@ -1,0 +1,411 @@
+:root {
+    --bg-dark: #05070a;
+    --accent-blue: #00f2ff;
+    --accent-purple: #7000ff;
+    --text-main: #e0e6ed;
+    --text-dim: #94a3b8;
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --error: #ff4d4d;
+    --success: #00ff88;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+.cyber-bg {
+    background: radial-gradient(circle at 50% 50%, #0f172a 0%, #05070a 100%);
+    min-height: 100vh;
+}
+
+.cyber-bg::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+    opacity: 0.05;
+    pointer-events: none;
+}
+
+/* Glassmorphism */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Auth View */
+#login-view {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.glitch-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+    position: relative;
+    color: var(--accent-blue);
+    text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+}
+
+.subtitle {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+}
+
+input, textarea, select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+}
+
+/* Buttons */
+.primary-btn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 242, 255, 0.4);
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.text-btn:hover {
+    color: white;
+}
+
+/* Dashboard */
+.glass-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(5, 7, 10, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 1rem 2rem;
+}
+
+.nav-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
+.dashboard-content {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.agent-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 3rem;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.agent-info {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.avatar-glow {
+    width: 64px;
+    height: 64px;
+    background: rgba(0, 242, 255, 0.1);
+    border: 2px solid var(--accent-blue);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+}
+
+.agent-info h2 {
+    font-weight: 800;
+    font-size: 1.8rem;
+}
+
+.agent-info p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.stats-grid {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-item .label {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+}
+
+.stat-item .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
+/* XP Progress */
+.progress-container {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    box-shadow: 0 0 10px var(--accent-blue);
+    transition: width 0.5s ease-out;
+}
+
+.progress-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.5rem;
+    text-align: right;
+}
+
+/* Dashboard Grid */
+.main-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+}
+
+.mt-card {
+    margin-top: 2rem;
+}
+
+h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+    letter-spacing: 1px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+}
+
+/* Queue List */
+.queue-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.queue-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.queue-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.queue-info h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.queue-info p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+
+.vote-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+}
+
+/* Bio & Achievements */
+.bio-text {
+    font-size: 0.95rem;
+    font-style: italic;
+    color: var(--text-main);
+    line-height: 1.7;
+}
+
+.achievement-list {
+    list-style: none;
+}
+
+.achievement-list li {
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-dim);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px;
+}
+
+#modal-desc {
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+.modal-btns {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.vote-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.danger-btn, .success-btn {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.danger-btn { background: var(--error); color: white; }
+.success-btn { background: var(--success); color: black; }
+
+.error-msg { color: var(--error); font-size: 0.8rem; margin-top: 1rem; }
+.status-msg { font-size: 0.8rem; margin-top: 1rem; }
