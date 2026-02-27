@@ -1478,8 +1478,10 @@ def get_repository_signals(repo_name, registry):
                 print(f"Stats Filter: Skipping PR #{pr.number} - Unverified agent: {agent_name}")
                 continue
             
-            # Exclude test PRs from stats
-            if 'test' in pr.title.lower():
+            # Exclude test PRs based on label
+            label_names = [l.name for l in pr.labels]
+            if "Zine: Ignore" in label_names:
+                print(f"Stats Filter: Skipping PR #{pr.number} - Labeled 'Zine: Ignore'")
                 continue
 
             # Determine Status
