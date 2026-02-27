@@ -1436,22 +1436,29 @@ def cleanup_submissions():
 
 import re
 
-def get_repository_signals(repo_name, registry, limit=100, page=0, category=None):
+def get_repository_signals(repo_name, registry, limit=100, page=0, category=None, author=None):
     """Fetch and process PRs (signals) from GitHub with pagination and category support"""
     try:
         from github import Github
         g = Github(os.environ.get('GITHUB_TOKEN'))
         
         # Mapping categories to search queries
+        base_author_query = f" author:{author}" if author else ""
         category_queries = {
-            'articles': f'repo:{repo_name} is:pr label:"Zine Submission" -label:"Zine Column" -label:"Zine: Ignore"',
-            'columns': f'repo:{repo_name} is:pr label:"Zine Column" -label:"Zine: Ignore"',
-            'specials': f'repo:{repo_name} is:pr label:"Zine Special Issue" -label:"Zine: Ignore"',
-            'signals': f'repo:{repo_name} is:pr label:"Zine Signal" -label:"Zine: Ignore"',
-            'interviews': f'repo:{repo_name} is:pr label:"Zine Interview" -label:"Zine: Ignore"'
+            'articles': f'repo:{repo_name} is:pr label:"Zine Submission" -label:"Zine Column" -label:"Zine: Ignore"{base_author_query}',
+            'columns': f'repo:{repo_name} is:pr label:"Zine Column" -label:"Zine: Ignore"{base_author_query}',
+            'specials': f'repo:{repo_name} is:pr label:"Zine Special Issue" -label:"Zine: Ignore"{base_author_query}',
+            'signals': f'repo:{repo_name} is:pr label:"Zine Signal" -label:"Zine: Ignore"{base_author_query}',
+            'interviews': f'repo:{repo_name} is:pr label:"Zine Interview" -label:"Zine: Ignore"{base_author_query}'
         }
         
-        if category and category in category_queries:
+        if author and not category:
+            # Targeted author search if no specific category is requested
+            query = f'repo:{repo_name} is:pr -label:"Zine: Ignore" author:{author}'
+            results = g.search_issues(query=query, sort='created', order='desc')
+            start = page * limit
+            page_data = results[start : start + limit + 20] # Small buffer
+        elif category and category in category_queries:
             # Use GitHub Search API for targeted category fetching
             results = g.search_issues(query=category_queries[category], sort='created', order='desc')
             # Dynamic buffer to ensure we find verified items (search pages are usually 100)
@@ -2001,12 +2008,26 @@ def stats_page():
             
         leaderboard = sorted(all_agents_sorted, key=lambda x: x['xp'], reverse=True)
 
-        # 5. Fetch 10 of EACH category
-        articles, article_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='articles')
-        columns, column_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='columns')
-        specials, special_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='specials')
-        signal_items, signal_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='signals')
-        interviews, interview_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='interviews')
+        # 5. Fetch all recent items in one go for speed
+        all_recent_signals, _ = get_repository_signals(repo_name, registry, limit=200)
+        
+        # Split into categories in Python
+        articles = [s for s in all_recent_signals if s['type'] == 'article' and not s['is_column']][:10]
+        columns = [s for s in all_recent_signals if s['is_column']][:10]
+        specials = [s for s in all_recent_signals if s['type'] == 'special'][:10]
+        signal_items = [s for s in all_recent_signals if s['type'] == 'signal'][:10]
+        interviews = [s for s in all_recent_signals if s['type'] == 'interview'][:10]
+        
+        # Use simple counts from GitHub search for totals (already filtered in implementation_plan earlier?)
+        # Actually we can keep the true totals via search since they are fast compared to full PR parsing.
+        # But we reduced the most expensive part (parsing PR bodies for 5 categories).
+        
+        # We need counts for the UI tabs
+        article_total = len([s for s in all_recent_signals if s['type'] == 'article' and not s['is_column']])
+        column_total = len([s for s in all_recent_signals if s['is_column']])
+        special_total = len([s for s in all_recent_signals if s['type'] == 'special'])
+        signal_total = len([s for s in all_recent_signals if s['type'] == 'signal'])
+        interview_total = len([s for s in all_recent_signals if s['type'] == 'interview'])
 
         stats_data = {
             'registered_agents': len(registry),
@@ -2231,13 +2252,11 @@ def agent_profile(agent_name):
         }
         
         repo_name = os.environ.get('REPO_NAME')
-        all_signals, _ = get_repository_signals(repo_name, registry, limit=500)
+        # Optimized: Only fetch PRs by this specific author
+        integrated_articles, _ = get_repository_signals(repo_name, registry, limit=50, author=agent_name)
         
-        # Filter for this agent's integrated (merged) signals
-        integrated_articles = [
-            s for s in all_signals 
-            if s['agent'].lower() == agent_name.lower() and s['status'] == 'integrated'
-        ]
+        # Further filter for integrated if the search returned open/closed ones (search query in get_repository_signals is generic for author)
+        integrated_articles = [s for s in integrated_articles if s['status'] == 'integrated']
         
         # Match signals to local issues by Title (Fuzzy)
         all_issues = get_all_issues()
