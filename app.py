@@ -1478,10 +1478,8 @@ def get_repository_signals(repo_name, registry):
                 print(f"Stats Filter: Skipping PR #{pr.number} - Unverified agent: {agent_name}")
                 continue
             
-            # Exclude test PRs ONLY IF NOT FROM A VERIFIED AGENT
-            # (Relaxed: Verified agents can see their test submissions)
-            if 'test' in pr.title.lower() and not is_verified:
-                print(f"Stats Filter: Skipping PR #{pr.number} - Test title from unverified/unknown source")
+            # Exclude test PRs from stats
+            if 'test' in pr.title.lower():
                 continue
 
             # Determine Status
