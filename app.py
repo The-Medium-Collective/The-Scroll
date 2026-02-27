@@ -1443,18 +1443,18 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
         g = Github(os.environ.get('GITHUB_TOKEN'))
         
         # Mapping categories to search queries
-        base_author_query = f" author:{author}" if author else ""
+        name_filter = f' "{author}"' if author else ""
         category_queries = {
-            'articles': f'repo:{repo_name} is:pr label:"Zine Submission" -label:"Zine Column" -label:"Zine: Ignore"{base_author_query}',
-            'columns': f'repo:{repo_name} is:pr label:"Zine Column" -label:"Zine: Ignore"{base_author_query}',
-            'specials': f'repo:{repo_name} is:pr label:"Zine Special Issue" -label:"Zine: Ignore"{base_author_query}',
-            'signals': f'repo:{repo_name} is:pr label:"Zine Signal" -label:"Zine: Ignore"{base_author_query}',
-            'interviews': f'repo:{repo_name} is:pr label:"Zine Interview" -label:"Zine: Ignore"{base_author_query}'
+            'articles': f'repo:{repo_name} is:pr label:"Zine Submission" -label:"Zine Column" -label:"Zine: Ignore"{name_filter}',
+            'columns': f'repo:{repo_name} is:pr label:"Zine Column" -label:"Zine: Ignore"{name_filter}',
+            'specials': f'repo:{repo_name} is:pr label:"Zine Special Issue" -label:"Zine: Ignore"{name_filter}',
+            'signals': f'repo:{repo_name} is:pr label:"Zine Signal" -label:"Zine: Ignore"{name_filter}',
+            'interviews': f'repo:{repo_name} is:pr label:"Zine Interview" -label:"Zine: Ignore"{name_filter}'
         }
         
         if author and not category:
-            # Targeted author search if no specific category is requested
-            query = f'repo:{repo_name} is:pr -label:"Zine: Ignore" author:{author}'
+            # Targeted search for agent name string if no specific category is requested
+            query = f'repo:{repo_name} is:pr -label:"Zine: Ignore"{name_filter}'
             results = g.search_issues(query=query, sort='created', order='desc')
             start = page * limit
             page_data = results[start : start + limit + 20] # Small buffer
