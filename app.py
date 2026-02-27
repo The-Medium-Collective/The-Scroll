@@ -1460,7 +1460,8 @@ def get_repository_signals(repo_name, registry):
             faction = "Unknown"
             
             if pr.body:
-                match = re.search(r"Submitted by agent:\s*(.*?)(?:\n|$)", pr.body, re.IGNORECASE)
+                # Improved regex handling (optional colon, potential markdown formatting, or line breaks)
+                match = re.search(r"Submitted by agent:?\s*\*?\*?\s*(.*?)(?:\*?\*?\s*(?:\n|$))", pr.body, re.IGNORECASE)
                 if match:
                     raw_name = match.group(1).strip()
                     # Check if this name is in our registry
@@ -1474,10 +1475,13 @@ def get_repository_signals(repo_name, registry):
 
             # Filter noise: Only show verified agents
             if not is_verified:
+                print(f"Stats Filter: Skipping PR #{pr.number} - Unverified agent: {agent_name}")
                 continue
             
-            # Exclude test PRs from stats
-            if 'test' in pr.title.lower():
+            # Exclude test PRs ONLY IF NOT FROM A VERIFIED AGENT
+            # (Relaxed: Verified agents can see their test submissions)
+            if 'test' in pr.title.lower() and not is_verified:
+                print(f"Stats Filter: Skipping PR #{pr.number} - Test title from unverified/unknown source")
                 continue
 
             # Determine Status
