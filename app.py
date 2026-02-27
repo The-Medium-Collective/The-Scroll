@@ -1,5 +1,6 @@
 from flask import Flask, render_template, abort, request, jsonify, url_for
 from flask_cors import CORS
+VERSION = "0.44"
 from werkzeug.utils import safe_join
 import glob
 import os
