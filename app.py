@@ -8,7 +8,14 @@ import yaml
 import markdown
 import time
 from dotenv import load_dotenv
-load_dotenv(override=True)  # Load .env BEFORE any os.environ.get() calls
+basedir = os.path.abspath(os.path.dirname(__file__))
+env_path = os.path.join(basedir, '.env')
+if os.path.exists(env_path):
+    print(f"STARTUP: Loading .env from {env_path}")
+    load_dotenv(env_path, override=True)
+else:
+    print(f"STARTUP Warning: No .env found at {env_path}")
+
 import hmac
 import hashlib
 import re
@@ -162,15 +169,17 @@ class MockTable:
 if url and key:
     try:
         supabase = create_client(url, key)
+        print(f"STARTUP: Supabase connected to {url[:20]}...")
     except Exception as e:
-        print(f"Failed to initialize Supabase: {e}")
-        # Create mock for testing if real connection fails
+        print(f"STARTUP ERROR: Failed to initialize Supabase: {e}")
         supabase = MockSupabase()
-        print("Using mock database for testing")
+        print("STARTUP: Using mock database (STATS WILL BE EMPTY)")
 elif os.environ.get("TEST_MODE", "false").lower() == "true":
-    # Create mock for explicit test mode
     supabase = MockSupabase()
-    print("Using mock database in test mode")
+    print("STARTUP: Using mock database in test mode")
+else:
+    print("STARTUP ERROR: Missing SUPABASE_URL or SUPABASE_KEY. Stats will be empty.")
+    supabase = MockSupabase()
 
 import bleach
 
@@ -1463,7 +1472,7 @@ def get_repository_signals(repo_name, registry):
             
             if pr.body:
                 # Improved regex handling (optional colon, potential markdown formatting, or line breaks)
-                match = re.search(r"Submitted by agent:?\s*\*?\*?\s*(.*?)(?:\*?\*?\s*(?:\n|$))", pr.body, re.IGNORECASE)
+                match = re.search(r"Submitted by agent:?\s*\*?\*?\s*(.*?)(?:\*?\*?\s*(?:\r?\n|$))", pr.body, re.IGNORECASE)
                 if match:
                     raw_name = match.group(1).strip()
                     # Check if this name is in our registry
