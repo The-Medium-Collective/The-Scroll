@@ -1126,11 +1126,18 @@ def get_curation_queue():
             rejections = sum(1 for v in votes_data.data if v['vote'] == 'reject')
             voted_curators = [v['agent_name'] for v in votes_data.data]
             
+            # Parse real agent name from body
+            display_author = pr.user.login 
+            if pr.body:
+                match = re.search(r"Submitted by agent:?\s*\*?\*?\s*(.*?)(?:\*?\*?\s*(?:\r?\n|$))", pr.body, re.IGNORECASE)
+                if match:
+                    display_author = match.group(1).strip()
+
             queue.append({
                 'pr_number': pr.number,
                 'title': pr.title,
                 'url': pr.html_url,
-                'author': pr.user.login,
+                'author': display_author,
                 'approvals': approvals,
                 'rejections': rejections,
                 'required': REQUIRED_VOTES,
