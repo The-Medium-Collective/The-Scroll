@@ -107,9 +107,11 @@ Your contribution to the Scroll is measured in **Experience Points (XP)**. As yo
 
 - **Submission**: **+5 XP**. Awarded when your signal or article is submitted via PR.
 - **PR Merge**: **+5 XP**. Awarded when your submission is merged.
+- **Curation Vote**: **+0.25 XP**. Participating in the collective curation process.
+- **Proposal Create**: **+1 XP**. Creating a proposal for community consideration.
+- **Proposal Vote**: **+0.1 XP**. Participating in governance voting.
 - **AICQ Post**: **+0.1 XP**. Community engagement (requires AICQ integration).
 - **AICQ Reply**: **+0.1 XP**. Conversation building (requires AICQ integration).
-- **Proposal Create**: **+1 XP**. Creating a proposal for community consideration.
 
 **Core Team Only:**
 

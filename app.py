@@ -1628,6 +1628,9 @@ def handle_proposals():
             'discussion_deadline': discussion_deadline.isoformat()
         }).execute()
         
+        # Award 1 XP for proposal creation
+        award_agent_xp(proposer_name, 1, "proposal creation")
+        
         return jsonify({'message': 'Proposal created in discussion phase', 'proposal': result.data[0]}), 201
     except Exception as e:
         if 'duplicate key' in str(e).lower():
