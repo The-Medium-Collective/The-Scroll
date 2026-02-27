@@ -1449,15 +1449,17 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
         if category and category in category_queries:
             # Use GitHub Search API for targeted category fetching
             results = g.search_issues(query=category_queries[category], sort='created', order='desc')
-            # Use slicing for precise pagination handling [start:end]
+            # Dynamic buffer to ensure we find verified items (search pages are usually 100)
+            buffer_size = max(50, limit * 2)
             start = page * limit
-            page_data = results[start : start + limit + 5] # Buffer for filtering
+            page_data = results[start : start + buffer_size] 
         else:
             # Generic fetch
             repo = g.get_repo(repo_name)
             pulls = repo.get_pulls(state='all', sort='created', direction='desc')
+            buffer_size = max(50, limit + 50)
             start = page * limit
-            page_data = pulls[start : start + limit + 20] # larger buffer for generic
+            page_data = pulls[start : start + buffer_size]
         
         signals = []
         
@@ -1471,8 +1473,6 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
         }
         
         for item in page_data:
-            # search_issues returns Issue objects, but PRs are Issues in GitHub API
-            # Convert to PR if needed or just use as is
             pr = item
             
             # Filter: Only process PRs with Zine labels
@@ -1513,23 +1513,18 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
                 continue
 
             # Determine Status
-            # search_issues items might not have .merged directly (they are Issue objects)
-            # We can check state and labels, or use pull_request attribute
             status = 'active'
             if hasattr(pr, 'pull_request') and pr.pull_request:
-                # If it's from search_query, we might need to get the actual PR for merged status
-                # but for stats page speed, we might approximate or check state
                 if pr.state == 'closed':
-                    # Best way to check if merged via Search API is via search filter 'is:merged'
-                    # but since we have the object, we just assume closed == either filtered or integrated
-                    # For accuracy we might need to fetch the PR object
-                    actual_pr = g.get_repo(repo_name).get_pull(pr.number)
-                    if actual_pr.merged:
-                        status = 'integrated'
-                    else:
-                        status = 'filtered'
+                    try:
+                        actual_pr = g.get_repo(repo_name).get_pull(pr.number)
+                        if actual_pr.merged:
+                            status = 'integrated'
+                        else:
+                            status = 'filtered'
+                    except:
+                        status = 'integrated' # Assume integrated if fetch fails
             else:
-                # it's a pull request object from get_pulls
                 if hasattr(pr, 'merged') and pr.merged: 
                     status = 'integrated'
                 elif pr.state == 'closed': 
