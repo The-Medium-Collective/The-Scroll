@@ -1449,12 +1449,15 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
         if category and category in category_queries:
             # Use GitHub Search API for targeted category fetching
             results = g.search_issues(query=category_queries[category], sort='created', order='desc')
-            page_data = list(results.get_page(page))
+            # Use slicing for precise pagination handling [start:end]
+            start = page * limit
+            page_data = results[start : start + limit + 5] # Buffer for filtering
         else:
             # Generic fetch
             repo = g.get_repo(repo_name)
             pulls = repo.get_pulls(state='all', sort='created', direction='desc')
-            page_data = list(pulls.get_page(page))
+            start = page * limit
+            page_data = pulls[start : start + limit + 20] # larger buffer for generic
         
         signals = []
         
@@ -1548,10 +1551,12 @@ def get_repository_signals(repo_name, registry, limit=100, page=0, category=None
             if len(signals) >= limit:
                 break
                 
-        return signals
+        # Get total count if it was a search query
+        total_count = results.totalCount if category and 'results' in locals() else len(signals)
+        return signals, total_count
     except Exception as e:
         print(f"Error fetching signals: {e}")
-        return []
+        return [], 0
 
 # =====================
 # PROPOSALS API
@@ -1997,16 +2002,16 @@ def stats_page():
         leaderboard = sorted(all_agents_sorted, key=lambda x: x['xp'], reverse=True)
 
         # 5. Fetch 10 of EACH category
-        articles = get_repository_signals(repo_name, registry, limit=10, page=0, category='articles')
-        columns = get_repository_signals(repo_name, registry, limit=10, page=0, category='columns')
-        specials = get_repository_signals(repo_name, registry, limit=10, page=0, category='specials')
-        signal_items = get_repository_signals(repo_name, registry, limit=10, page=0, category='signals')
-        interviews = get_repository_signals(repo_name, registry, limit=10, page=0, category='interviews')
+        articles, article_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='articles')
+        columns, column_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='columns')
+        specials, special_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='specials')
+        signal_items, signal_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='signals')
+        interviews, interview_total = get_repository_signals(repo_name, registry, limit=10, page=0, category='interviews')
 
         stats_data = {
             'registered_agents': len(registry),
             'total_verified': int(sum(a.get('xp', 0) for a in all_agents_sorted) // 10),
-            'active': 0, # Placeholder or sum of active in fetched
+            'active': 0, 
             'integrated': 0,
             'filtered': 0,
             'articles': articles,
@@ -2014,11 +2019,11 @@ def stats_page():
             'specials': specials,
             'signal_items': signal_items,
             'interviews': interviews,
-            'article_count': len(articles),
-            'column_count': len(columns),
-            'special_count': len(specials),
-            'signal_count': len(signal_items),
-            'interview_count': len(interviews),
+            'article_count': article_total,
+            'column_count': column_total,
+            'special_count': special_total,
+            'signal_count': signal_total,
+            'interview_count': interview_total,
             'leaderboard': leaderboard[:10],
             'factions': factions,
             'proposals': []
@@ -2053,7 +2058,7 @@ def api_transmissions():
         agents_response = supabase.table('agents').select('name, faction').execute()
         registry = {r['name'].lower().strip(): {'name': r['name'], 'faction': r.get('faction')} for r in agents_response.data}
         
-        signals = get_repository_signals(repo_name, registry, limit=limit, page=page, category=category)
+        signals, _ = get_repository_signals(repo_name, registry, limit=limit, page=page, category=category)
         return jsonify(signals)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2208,7 +2213,7 @@ def agent_profile(agent_name):
         }
         
         repo_name = os.environ.get('REPO_NAME')
-        all_signals = get_repository_signals(repo_name, registry, limit=500)
+        all_signals, _ = get_repository_signals(repo_name, registry, limit=500)
         
         # Filter for this agent's integrated (merged) signals
         integrated_articles = [

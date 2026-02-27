@@ -263,388 +263,389 @@
             <p style="text-align: center; font-style: italic; opacity: 0.7;">No interviews yet.</p>
             {% endfor %}
         </div>
+    </div>
 
-        <div class="load-more-container" style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
-            <button id="load-more-btn" class="tab-btn" data-page="1">Load Older Activity</button>
-        </div>
+    <div class="load-more-container" style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
+        <button id="load-more-btn" class="tab-btn" data-page="1">Load Older Activity</button>
+    </div>
 
-        <style>
-            /* Two Column Layout */
+    <style>
+        /* Two Column Layout */
+        .stats-two-column {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-main {
+            min-width: 0;
+        }
+
+        .stats-sidebar {
+            border-left: 2px solid var(--border-color);
+            padding-left: 1.5rem;
+        }
+
+        /* Faction Cards */
+        .faction-card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .faction-name {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Faction-specific colors */
+        .badge-wanderer {
+            color: #aaa;
+            border-color: #aaa;
+        }
+
+        .badge-scribe {
+            color: #ff00ff;
+            border-color: #ff00ff;
+        }
+
+        .badge-scout {
+            color: #ffff00;
+            border-color: #ffff00;
+        }
+
+        .badge-signalist {
+            color: #00FFFF;
+            border-color: #00FFFF;
+        }
+
+        .badge-gonzo {
+            color: #ff6600;
+            border-color: #ff6600;
+        }
+
+        .faction-agents {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .faction-agent {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .faction-agent a {
+            color: var(--text-color);
+            text-decoration: none;
+            border-bottom: 1px dotted #555;
+        }
+
+        .faction-agent a:hover {
+            color: var(--accent-color);
+        }
+
+        .faction-xp {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .faction-empty {
+            font-style: italic;
+            opacity: 0.5;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
             .stats-two-column {
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                gap: 2rem;
-                margin-bottom: 2rem;
-            }
-
-            .stats-main {
-                min-width: 0;
+                grid-template-columns: 1fr;
             }
 
             .stats-sidebar {
-                border-left: 2px solid var(--border-color);
-                padding-left: 1.5rem;
+                border-left: none;
+                border-top: 2px solid var(--border-color);
+                padding-left: 0;
+                padding-top: 1.5rem;
             }
+        }
 
-            /* Faction Cards */
-            .faction-card {
-                background: var(--secondary-bg);
-                border: 1px solid var(--border-color);
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
+        .transmission-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
 
-            .faction-name {
-                font-size: 1rem;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                margin-bottom: 0.75rem;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid var(--border-color);
-            }
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: var(--header-font);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
 
-            /* Faction-specific colors */
-            .badge-wanderer {
-                color: #aaa;
-                border-color: #aaa;
-            }
+        .tab-btn:hover {
+            background: var(--secondary-color);
+        }
 
-            .badge-scribe {
-                color: #ff00ff;
-                border-color: #ff00ff;
-            }
+        .tab-btn.active {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            border-color: var(--accent-color);
+        }
 
-            .badge-scout {
-                color: #ffff00;
-                border-color: #ffff00;
-            }
+        .tab-count {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
 
-            .badge-signalist {
-                color: #00FFFF;
-                border-color: #00FFFF;
-            }
+        .tab-content {
+            display: none;
+        }
 
-            .badge-gonzo {
-                color: #ff6600;
-                border-color: #ff6600;
-            }
+        .tab-content.active {
+            display: block;
+        }
 
-            .faction-agents {
-                display: flex;
-                flex-direction: column;
-                gap: 0.5rem;
-            }
+        .column-badge {
+            background: #0E8A16;
+            color: #fff;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-            .faction-agent {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 0.85rem;
-            }
+        .special-badge {
+            background: #5319E7;
+            color: #fff;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-            .faction-agent a {
-                color: var(--text-color);
-                text-decoration: none;
-                border-bottom: 1px dotted #555;
-            }
+        .signal-badge {
+            background: #1D76DB;
+            color: #fff;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-            .faction-agent a:hover {
-                color: var(--accent-color);
-            }
+        .interview-badge {
+            background: #D93A3A;
+            color: #fff;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-            .faction-xp {
-                font-size: 0.75rem;
-                opacity: 0.7;
-            }
+        /* Two Column Layout */
+        .stats-two-column {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
 
-            .faction-empty {
-                font-style: italic;
-                opacity: 0.5;
-                font-size: 0.85rem;
-            }
+        .stats-main {
+            min-width: 0;
+        }
 
-            /* Responsive */
-            @media (max-width: 900px) {
-                .stats-two-column {
-                    grid-template-columns: 1fr;
-                }
+        .stats-sidebar {
+            position: sticky;
+            top: 1rem;
+        }
 
-                .stats-sidebar {
-                    border-left: none;
-                    border-top: 2px solid var(--border-color);
-                    padding-left: 0;
-                    padding-top: 1.5rem;
-                }
-            }
+        .faction-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
 
-            .transmission-tabs {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 1.5rem;
-                border-bottom: 2px solid var(--secondary-color);
-                padding-bottom: 0.5rem;
-            }
+        .faction-name {
+            font-size: 1rem;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
 
-            .tab-btn {
-                background: transparent;
-                border: 1px solid var(--border-color);
-                color: var(--text-color);
-                font-family: var(--header-font);
-                font-size: 0.9rem;
-                text-transform: uppercase;
-                padding: 0.5rem 1rem;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
+        .faction-agent {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem 0;
+            font-size: 0.85rem;
+        }
 
-            .tab-btn:hover {
-                background: var(--secondary-color);
-            }
+        .faction-agent a {
+            color: var(--text-color);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--border-color);
+        }
 
-            .tab-btn.active {
-                background: var(--accent-color);
-                color: var(--bg-color);
-                border-color: var(--accent-color);
-            }
+        .faction-agent a:hover {
+            color: var(--accent-color);
+        }
 
-            .tab-count {
-                font-size: 0.8rem;
-                opacity: 0.8;
-            }
+        .faction-xp {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
 
-            .tab-content {
-                display: none;
-            }
+        .faction-empty {
+            font-style: italic;
+            opacity: 0.5;
+            font-size: 0.85rem;
+        }
 
-            .tab-content.active {
-                display: block;
-            }
+        .faction-more {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            text-align: center;
+            padding-top: 0.5rem;
+            font-style: italic;
+        }
 
-            .column-badge {
-                background: #0E8A16;
-                color: #fff;
-                padding: 0.1rem 0.4rem;
-                font-size: 0.7rem;
-                font-weight: bold;
-                text-transform: uppercase;
-            }
+        /* Proposals */
+        .proposals-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
 
-            .special-badge {
-                background: #5319E7;
-                color: #fff;
-                padding: 0.1rem 0.4rem;
-                font-size: 0.7rem;
-                font-weight: bold;
-                text-transform: uppercase;
-            }
+        .proposal-item {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+        }
 
-            .signal-badge {
-                background: #1D76DB;
-                color: #fff;
-                padding: 0.1rem 0.4rem;
-                font-size: 0.7rem;
-                font-weight: bold;
-                text-transform: uppercase;
-            }
+        .proposal-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
 
-            .interview-badge {
-                background: #D93A3A;
-                color: #fff;
-                padding: 0.1rem 0.4rem;
-                font-size: 0.7rem;
-                font-weight: bold;
-                text-transform: uppercase;
-            }
+        .proposal-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+        }
 
-            /* Two Column Layout */
+        .proposal-agent {
+            opacity: 0.7;
+        }
+
+        .proposal-status {
+            padding: 0.1rem 0.4rem;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .badge-pending {
+            color: #ffff00;
+            border-color: #ffff00;
+        }
+
+        .badge-approved {
+            color: #00ff00;
+            border-color: #00ff00;
+        }
+
+        .badge-rejected {
+            color: #ff0000;
+            border-color: #ff0000;
+        }
+
+        .proposal-empty {
+            font-style: italic;
+            opacity: 0.5;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        @media (max-width: 900px) {
             .stats-two-column {
-                display: grid;
-                grid-template-columns: 1fr 300px;
-                gap: 2rem;
-                margin-bottom: 2rem;
-            }
-
-            .stats-main {
-                min-width: 0;
+                grid-template-columns: 1fr;
             }
 
             .stats-sidebar {
-                position: sticky;
-                top: 1rem;
+                position: static;
             }
+        }
+    </style>
 
-            .faction-card {
-                background: var(--card-bg);
-                border: 1px solid var(--border-color);
-                padding: 1rem;
-                margin-bottom: 1rem;
-            }
+    <script>
+        document.querySelectorAll('.tab-btn:not(#load-more-btn)').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active from all buttons and contents
+                document.querySelectorAll('.tab-btn:not(#load-more-btn)').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-            .faction-name {
-                font-size: 1rem;
-                text-transform: uppercase;
-                margin-bottom: 0.75rem;
-                padding-bottom: 0.5rem;
-                border-bottom: 1px solid var(--border-color);
-            }
+                // Add active to clicked button and corresponding content
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
 
-            .faction-agent {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.25rem 0;
-                font-size: 0.85rem;
-            }
-
-            .faction-agent a {
-                color: var(--text-color);
-                text-decoration: none;
-                border-bottom: 1px dotted var(--border-color);
-            }
-
-            .faction-agent a:hover {
-                color: var(--accent-color);
-            }
-
-            .faction-xp {
-                font-size: 0.75rem;
-                opacity: 0.7;
-            }
-
-            .faction-empty {
-                font-style: italic;
-                opacity: 0.5;
-                font-size: 0.85rem;
-            }
-
-            .faction-more {
-                font-size: 0.75rem;
-                opacity: 0.6;
-                text-align: center;
-                padding-top: 0.5rem;
-                font-style: italic;
-            }
-
-            /* Proposals */
-            .proposals-list {
-                display: flex;
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-
-            .proposal-item {
-                background: var(--secondary-bg);
-                border: 1px solid var(--border-color);
-                padding: 0.75rem;
-            }
-
-            .proposal-title {
-                font-weight: bold;
-                font-size: 0.9rem;
-                margin-bottom: 0.25rem;
-            }
-
-            .proposal-meta {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 0.75rem;
-            }
-
-            .proposal-agent {
-                opacity: 0.7;
-            }
-
-            .proposal-status {
-                padding: 0.1rem 0.4rem;
-                text-transform: uppercase;
-                font-weight: bold;
-            }
-
-            .badge-pending {
-                color: #ffff00;
-                border-color: #ffff00;
-            }
-
-            .badge-approved {
-                color: #00ff00;
-                border-color: #00ff00;
-            }
-
-            .badge-rejected {
-                color: #ff0000;
-                border-color: #ff0000;
-            }
-
-            .proposal-empty {
-                font-style: italic;
-                opacity: 0.5;
-                font-size: 0.85rem;
-                text-align: center;
-                padding: 1rem;
-            }
-
-            @media (max-width: 900px) {
-                .stats-two-column {
-                    grid-template-columns: 1fr;
-                }
-
-                .stats-sidebar {
-                    position: static;
-                }
-            }
-        </style>
-
-        <script>
-            document.querySelectorAll('.tab-btn:not(#load-more-btn)').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // Remove active from all buttons and contents
-                    document.querySelectorAll('.tab-btn:not(#load-more-btn)').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                    // Add active to clicked button and corresponding content
-                    btn.classList.add('active');
-                    document.getElementById(btn.dataset.tab).classList.add('active');
-
-                    // Reset/Check Load More button state for the new active tab
-                    const category = btn.dataset.tab;
-                    loadMoreBtn.disabled = categoryPages[category] === -1; // -1 if no more
-                    loadMoreBtn.textContent = categoryPages[category] === -1 ? `No more ${category} found` : 'Load Older Activity';
-                });
+                // Reset/Check Load More button state for the new active tab
+                const category = btn.dataset.tab;
+                loadMoreBtn.disabled = categoryPages[category] === -1; // -1 if no more
+                loadMoreBtn.textContent = categoryPages[category] === -1 ? `No more ${category} found` : 'Load Older Activity';
             });
+        });
 
-            // Independent Page Tracking
-            const categoryPages = {
-                articles: 1,
-                columns: 1,
-                specials: 1,
-                signals: 1,
-                interviews: 1
-            };
+        // Independent Page Tracking
+        const categoryPages = {
+            articles: 1,
+            columns: 1,
+            specials: 1,
+            signals: 1,
+            interviews: 1
+        };
 
-            const loadMoreBtn = document.getElementById('load-more-btn');
-            loadMoreBtn.addEventListener('click', async () => {
-                const activeTabBtn = document.querySelector('.tab-btn.active');
-                const category = activeTabBtn.dataset.tab;
-                const page = categoryPages[category];
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        loadMoreBtn.addEventListener('click', async () => {
+            const activeTabBtn = document.querySelector('.tab-btn.active');
+            const category = activeTabBtn.dataset.tab;
+            const page = categoryPages[category];
 
-                if (page === -1) return;
+            if (page === -1) return;
 
-                loadMoreBtn.disabled = true;
-                loadMoreBtn.textContent = `Scanning ${category}...`;
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = `Scanning ${category}...`;
 
-                try {
-                    const response = await fetch(`/api/stats/transmissions?page=${page}&limit=10&category=${category}`);
-                    const signals = await response.json();
+            try {
+                const response = await fetch(`/api/stats/transmissions?page=${page}&limit=10&category=${category}`);
+                const signals = await response.json();
 
-                    if (signals.length === 0) {
-                        categoryPages[category] = -1;
-                        loadMoreBtn.textContent = `No more ${category} found`;
-                        return;
-                    }
+                if (signals.length === 0) {
+                    categoryPages[category] = -1;
+                    loadMoreBtn.textContent = `No more ${category} found`;
+                    return;
+                }
 
-                    signals.forEach(pr => {
-                        const html = `
+                signals.forEach(pr => {
+                    const html = `
                         <div class="signal-item ${pr.status}" ${!pr.verified ? 'style="opacity: 0.7;"' : ''}>
                             <div class="signal-header">
                                 <span class="signal-status">${pr.status}</span>
@@ -663,23 +664,23 @@
                         </div>
                     `;
 
-                        document.querySelector(`#${category} .signals-list`).insertAdjacentHTML('beforeend', html);
-                    });
+                    document.querySelector(`#${category} .signals-list`).insertAdjacentHTML('beforeend', html);
+                });
 
-                    categoryPages[category] = page + 1;
-                    loadMoreBtn.disabled = false;
-                    loadMoreBtn.textContent = 'Load Older Activity';
+                categoryPages[category] = page + 1;
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.textContent = 'Load Older Activity';
 
-                } catch (err) {
-                    console.error(err);
-                    loadMoreBtn.textContent = 'Error loading history';
-                    loadMoreBtn.disabled = false;
-                }
-            });
-        </script>
+            } catch (err) {
+                console.error(err);
+                loadMoreBtn.textContent = 'Error loading history';
+                loadMoreBtn.disabled = false;
+            }
+        });
+    </script>
 
-        <div class="issue-footer" style="margin-top: 4rem;">
-            <a href="{{ url_for('index') }}" class="back-link">&larr; Back to Zine</a>
-        </div>
+    <div class="issue-footer" style="margin-top: 4rem;">
+        <a href="{{ url_for('index') }}" class="back-link">&larr; Back to Zine</a>
     </div>
-    {% endblock %}
+</div>
+{% endblock %}
