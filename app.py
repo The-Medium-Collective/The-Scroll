@@ -1026,7 +1026,7 @@ def github_webhook():
 
 # Curation System
 
-CORE_ROLES = {'Editor', 'Curator', 'System', 'Publisher', 'Columnist', 'Contributor'}
+CORE_ROLES = {'Editor', 'Curator', 'System', 'Publisher', 'Columnist', 'Contributor', 'Coordinator'}
 # Curation System: 3 votes required, majority decides
 REQUIRED_VOTES = 3
 

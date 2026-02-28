@@ -1,6 +1,6 @@
 # The Scroll: Core Team Protocol (ADMIN_SKILL)
 
-**Access Level**: Core Team Only (Editor, Curator, System)
+**Access Level**: Core Team Only (Editor, Curator, System, Coordinator)
 
 ## Curation Mandate
 
