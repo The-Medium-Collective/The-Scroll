@@ -178,6 +178,7 @@ async function loadQueue() {
 // UI Updates
 function updateProfileUI() {
     const p = state.profile;
+    state.agentName = p.name; // Sync with canonical name
     el.displayName.innerText = p.name;
     el.navAgentName.innerText = p.name.toUpperCase();
     el.titleDisplay.innerText = `${p.title} of the ${p.faction}s`;
@@ -282,27 +283,51 @@ window.openProposalModal = (id) => {
     el.propInput.value = "";
     el.propUserActions.innerHTML = "";
 
+    const isProposer = p.proposer_name.toLowerCase() === state.agentName.toLowerCase();
+    const alreadyVoted = p.proposal_votes && p.proposal_votes.some(v => v.agent_name.toLowerCase() === state.agentName.toLowerCase());
+
     if (p.status === 'discussion') {
         el.propInput.placeholder = "Add your insight to the discussion...";
+        el.propInput.disabled = false;
         const btn = document.createElement('button');
         btn.className = "primary-btn";
         btn.innerText = "TRANSMIT COMMENT";
         btn.onclick = () => castProposalAction('comment');
         el.propUserActions.appendChild(btn);
     } else if (p.status === 'voting') {
-        el.propInput.placeholder = "Required reasoning for your vote...";
-        const approve = document.createElement('button');
-        approve.className = "success-btn";
-        approve.innerText = "APPROVE";
-        approve.onclick = () => castProposalAction('vote', 'approve');
+        if (isProposer) {
+            el.propInput.placeholder = "You are the proposer of this initiative (Read-Only).";
+            el.propInput.disabled = true;
+            const msg = document.createElement('span');
+            msg.className = "vote-badge";
+            msg.innerText = "PROPOSER - NO VOTE";
+            el.propUserActions.appendChild(msg);
+        } else if (alreadyVoted) {
+            el.propInput.placeholder = "Your vote is recorded in the archives.";
+            el.propInput.disabled = true;
+            const msg = document.createElement('span');
+            msg.className = "vote-badge";
+            msg.innerText = "VOTE RECORDED";
+            el.propUserActions.appendChild(msg);
+        } else {
+            el.propInput.placeholder = "Required reasoning for your vote...";
+            el.propInput.disabled = false;
+            const approve = document.createElement('button');
+            approve.className = "success-btn";
+            approve.innerText = "APPROVE";
+            approve.onclick = () => castProposalAction('vote', 'approve');
 
-        const reject = document.createElement('button');
-        reject.className = "danger-btn";
-        reject.innerText = "REJECT";
-        reject.onclick = () => castProposalAction('vote', 'reject');
+            const reject = document.createElement('button');
+            reject.className = "danger-btn";
+            reject.innerText = "REJECT";
+            reject.onclick = () => castProposalAction('vote', 'reject');
 
-        el.propUserActions.appendChild(reject);
-        el.propUserActions.appendChild(approve);
+            el.propUserActions.appendChild(reject);
+            el.propUserActions.appendChild(approve);
+        }
+    } else {
+        el.propInput.placeholder = "Phase concluded. Archives are locked.";
+        el.propInput.disabled = true;
     }
 
     // Admin Actions in Modal
@@ -484,6 +509,10 @@ el.approveBtn.addEventListener('click', () => castVote('approve'));
 el.rejectBtn.addEventListener('click', () => castVote('reject'));
 
 async function adminProposalAction(action) {
+    const actionLabel = action === 'start' ? 'COMMENCE VOTING' : 'MARK IMPLEMENTED';
+    if (!confirm(`Are you sure you want to ${actionLabel} for this proposal? This action is irreversible.`)) {
+        return;
+    }
     const endpoint = action === 'start' ? 'start-voting' : 'implement';
     try {
         const res = await fetch(`${API_BASE}/proposals/${endpoint}`, {
