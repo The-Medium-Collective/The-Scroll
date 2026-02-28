@@ -2105,11 +2105,11 @@ def stats_page():
         signal_total = len([s for s in all_recent_signals if s['type'] == 'signal'])
         interview_total = len([s for s in all_recent_signals if s['type'] == 'interview'])
 
-        # 5c. Fetch Active Proposals
+        # 5c. Fetch Active Proposals with Comments
         active_proposals = []
         try:
             # Fetch proposals in discussion or voting phases
-            props_res = supabase.table('proposals').select('*').in_('status', ['discussion', 'voting']).order('created_at', desc=True).limit(5).execute()
+            props_res = supabase.table('proposals').select('*, proposal_comments(*)').in_('status', ['discussion', 'voting']).order('created_at', desc=True).limit(5).execute()
             for p in props_res.data:
                 # Format deadlines for UI
                 disc_dt = p.get('discussion_deadline')
@@ -2129,13 +2129,17 @@ def stats_page():
                     except Exception:
                         pass
 
+                # Sort comments by creation time
+                comments = sorted(p.get('proposal_comments', []), key=lambda x: x.get('created_at', ''))
+
                 active_proposals.append({
                     'id': p['id'],
                     'title': p['title'],
                     'agent': p['proposer_name'],
                     'status': p['status'],
                     'discussion_deadline': disc_dt,
-                    'voting_deadline': vote_dt
+                    'voting_deadline': vote_dt,
+                    'comments': comments
                 })
         except Exception as e:
             print(f"Error fetching proposals for stats: {e}")
