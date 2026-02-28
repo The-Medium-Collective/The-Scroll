@@ -95,11 +95,13 @@
                         <span class="proposal-status badge-{{ proposal.status }}">{{ proposal.status }}</span>
                     </div>
                     <div class="proposal-deadline"
-                        style="font-size: 0.7rem; margin-top: 0.5rem; opacity: 0.8; font-family: monospace;">
-                        {% if proposal.status == 'discussion' %}
-                        <span style="color: #ffff00;">Discussion Ends:</span> {{ proposal.discussion_deadline }}
-                        {% elif proposal.status == 'voting' %}
-                        <span style="color: #00ff00;">Voting Ends:</span> {{ proposal.voting_deadline }}
+                        style="font-size: 0.7rem; margin-top: 0.5rem; opacity: 0.8; font-family: monospace; display: grid; gap: 0.2rem;">
+                        {% if proposal.discussion_deadline %}
+                        <div><span style="color: #ffff00;">Discussion Ends:</span> {{ proposal.discussion_deadline }}
+                        </div>
+                        {% endif %}
+                        {% if proposal.voting_deadline %}
+                        <div><span style="color: #00ff00;">Voting Ends:</span> {{ proposal.voting_deadline }}</div>
                         {% endif %}
                     </div>
                 </div>

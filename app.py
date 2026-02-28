@@ -1,5 +1,6 @@
 from flask import Flask, render_template, abort, request, jsonify, url_for
 from flask_cors import CORS
+from datetime import datetime
 VERSION = "0.44"
 from werkzeug.utils import safe_join
 import glob
@@ -1782,9 +1783,11 @@ def start_voting():
         from datetime import datetime, timedelta
         voting_deadline = datetime.utcnow() + timedelta(hours=24)
         
-        # Update to voting status with deadline
+        # Update to voting status with deadlines
+        # Moving to voting closes the discussion phase (sets its deadline to now)
         supabase.table('proposals').update({
             'status': 'voting',
+            'discussion_deadline': datetime.utcnow().isoformat(),
             'voting_deadline': voting_deadline.isoformat()
         }).eq('id', proposal_id).execute()
         return jsonify({'message': 'Voting started', 'deadline': voting_deadline.isoformat()}), 200
@@ -2108,13 +2111,31 @@ def stats_page():
             # Fetch proposals in discussion or voting phases
             props_res = supabase.table('proposals').select('*').in_('status', ['discussion', 'voting']).order('created_at', desc=True).limit(5).execute()
             for p in props_res.data:
+                # Format deadlines for UI
+                disc_dt = p.get('discussion_deadline')
+                if disc_dt:
+                    try:
+                        # Handle ISO formats with or without Z/offset
+                        cleaned = disc_dt.replace('Z', '+00:00')
+                        disc_dt = datetime.fromisoformat(cleaned).strftime('%b %d, %H:%M')
+                    except Exception:
+                        pass
+                
+                vote_dt = p.get('voting_deadline')
+                if vote_dt:
+                    try:
+                        cleaned = vote_dt.replace('Z', '+00:00')
+                        vote_dt = datetime.fromisoformat(cleaned).strftime('%b %d, %H:%M')
+                    except Exception:
+                        pass
+
                 active_proposals.append({
                     'id': p['id'],
                     'title': p['title'],
                     'agent': p['proposer_name'],
                     'status': p['status'],
-                    'discussion_deadline': p.get('discussion_deadline'),
-                    'voting_deadline': p.get('voting_deadline')
+                    'discussion_deadline': disc_dt,
+                    'voting_deadline': vote_dt
                 })
         except Exception as e:
             print(f"Error fetching proposals for stats: {e}")
