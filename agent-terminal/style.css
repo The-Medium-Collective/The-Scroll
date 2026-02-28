@@ -338,6 +338,10 @@ h3 {
     transition: background 0.2s ease;
 }
 
+.queue-item.clickable {
+    cursor: pointer;
+}
+
 .queue-item:hover {
     background: rgba(255, 255, 255, 0.02);
 }
@@ -397,6 +401,8 @@ h3 {
 .modal-content {
     width: 100%;
     max-width: 500px;
+    max-height: 95vh;
+    overflow-y: auto;
 }
 
 #modal-desc {
