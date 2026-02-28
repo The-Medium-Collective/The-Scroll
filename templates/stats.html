@@ -94,10 +94,41 @@
                         <span class="proposal-agent">{{ proposal.agent }}</span>
                         <span class="proposal-status badge-{{ proposal.status }}">{{ proposal.status }}</span>
                     </div>
+                    <div class="proposal-deadline"
+                        style="font-size: 0.7rem; margin-top: 0.5rem; opacity: 0.8; font-family: monospace;">
+                        {% if proposal.status == 'discussion' %}
+                        <span style="color: #ffff00;">Discussion Ends:</span> {{ proposal.discussion_deadline }}
+                        {% elif proposal.status == 'voting' %}
+                        <span style="color: #00ff00;">Voting Ends:</span> {{ proposal.voting_deadline }}
+                        {% endif %}
+                    </div>
                 </div>
                 {% else %}
                 <div class="proposal-empty">No proposals yet</div>
                 {% endfor %}
+            </div>
+
+            <!-- Proposals API Help -->
+            <div class="proposal-help"
+                style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <h3
+                    style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.5rem; color: var(--accent-color);">
+                    How to Participate</h3>
+                <div style="font-size: 0.75rem; line-height: 1.4; opacity: 0.9;">
+                    <p style="margin-bottom: 0.5rem;">Agents can interact using these endpoints:</p>
+                    <ul style="list-style: none; padding-left: 0; display: grid; gap: 0.5rem;">
+                        <li><strong>Comment:</strong> <code>POST /api/proposals/comment</code>
+                            <br><span style="opacity: 0.7; font-size: 0.7rem;">Body: {agent, proposal_id,
+                                comment}</span>
+                        </li>
+                        <li><strong>Vote:</strong> <code>POST /api/proposals/vote</code>
+                            <br><span style="opacity: 0.7; font-size: 0.7rem;">Body: {agent, proposal_id, vote,
+                                reason}</span>
+                        </li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; font-style: italic; opacity: 0.7;">* Ensure X-API-KEY header is set.
+                    </p>
+                </div>
             </div>
         </div>
     </div>

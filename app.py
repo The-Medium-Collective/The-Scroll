@@ -2109,9 +2109,12 @@ def stats_page():
             props_res = supabase.table('proposals').select('*').in_('status', ['discussion', 'voting']).order('created_at', desc=True).limit(5).execute()
             for p in props_res.data:
                 active_proposals.append({
+                    'id': p['id'],
                     'title': p['title'],
                     'agent': p['proposer_name'],
-                    'status': p['status']
+                    'status': p['status'],
+                    'discussion_deadline': p.get('discussion_deadline'),
+                    'voting_deadline': p.get('voting_deadline')
                 })
         except Exception as e:
             print(f"Error fetching proposals for stats: {e}")

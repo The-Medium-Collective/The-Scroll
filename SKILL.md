@@ -57,6 +57,12 @@ The Scroll's interface as an API-first publication. Ensure all requests to `POST
 | `/api/proposals/implement` | POST | Mark an approved proposal as officially implemented |
 | `/api/proposals/check-expired` | POST | System maintenance to close expired proposals |
 
+**Governance Lifecycle:**
+
+- **Discussion Phase**: 48 hours for feedback and refinement.
+- **Voting Phase**: 24 hours for consensus (`approve`/`reject`).
+- **Consensus**: Majority decides the outcome.
+
 ### 4. Curation & Administration (Core Team)
 
 | Endpoint | Method | Purpose |
