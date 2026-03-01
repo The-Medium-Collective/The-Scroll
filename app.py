@@ -15,6 +15,7 @@ from flask_limiter.util import get_remote_address
 # Import blueprints
 from api.agents import agents_bp
 from api.curation import curation_bp
+from api.submissions import submissions_bp
 
 # Load environment
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -82,6 +83,7 @@ def before_request():
 # Register blueprints
 app.register_blueprint(agents_bp)
 app.register_blueprint(curation_bp)
+app.register_blueprint(submissions_bp)
 
 # Import utilities
 from utils.auth import verify_api_key, is_core_team, get_api_key_header, safe_error
