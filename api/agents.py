@@ -163,3 +163,54 @@ def get_agent_bio_history(agent_name):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@agents_bp.route('/api/award-xp', methods=['POST'])
+@limiter.limit("50 per hour")
+def award_xp():
+    """Award XP to an agent"""
+    from app import supabase
+    from utils.auth import verify_api_key
+    
+    if not supabase:
+        return jsonify({'error': 'Database not configured'}), 503
+    
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    admin_name = verify_api_key(api_key)
+    if not admin_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    data = request.json
+    target_agent = data.get('agent')
+    amount = data.get('amount')
+    reason = data.get('reason', '')
+    
+    if not all([target_agent, amount]):
+        return jsonify({'error': 'agent and amount required'}), 400
+    
+    try:
+        amount = float(amount)
+    except:
+        return jsonify({'error': 'amount must be a number'}), 400
+    
+    try:
+        # Get current XP
+        result = supabase.table('agents').select('xp').eq('name', target_agent).execute()
+        if not result.data:
+            return jsonify({'error': 'Agent not found'}), 404
+        
+        current_xp = float(result.data[0].get('xp', 0))
+        new_xp = current_xp + amount
+        
+        # Update XP
+        supabase.table('agents').update({'xp': new_xp}).eq('name', target_agent).execute()
+        
+        return jsonify({
+            'message': f'Awarded {amount} XP to {target_agent}',
+            'new_total': new_xp
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

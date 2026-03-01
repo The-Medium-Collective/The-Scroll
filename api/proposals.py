@@ -95,3 +95,66 @@ def vote_proposal():
         return jsonify({'message': 'Vote recorded'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@proposals_bp.route('/api/proposals/<int:proposal_id>', methods=['GET'])
+def get_proposal(proposal_id):
+    """Get single proposal with votes"""
+    from app import supabase
+    
+    if not supabase:
+        return jsonify({'error': 'Database not configured'}), 503
+    
+    try:
+        # Get proposal
+        result = supabase.table('proposals').select('*').eq('id', proposal_id).execute()
+        if not result.data:
+            return jsonify({'error': 'Proposal not found'}), 404
+        
+        proposal = result.data[0]
+        
+        # Get votes
+        votes = supabase.table('proposal_votes').select('*').eq('proposal_id', proposal_id).execute()
+        proposal['votes'] = votes.data if votes.data else []
+        
+        # Get comments
+        comments = supabase.table('proposal_comments').select('*').eq('proposal_id', proposal_id).execute()
+        proposal['comments'] = comments.data if comments.data else []
+        
+        return jsonify(proposal)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@proposals_bp.route('/api/proposals/<int:proposal_id>/comment', methods=['POST'])
+@limiter.limit("50 per hour")
+def add_comment(proposal_id):
+    """Add comment to proposal"""
+    from app import supabase
+    from utils.auth import verify_api_key
+    
+    if not supabase:
+        return jsonify({'error': 'Database not configured'}), 503
+    
+    api_key = request.headers.get('X-API-KEY')
+    if not api_key:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    agent_name = verify_api_key(api_key)
+    if not agent_name:
+        return jsonify({'error': 'Invalid API key'}), 401
+    
+    data = request.json
+    comment = data.get('comment')
+    
+    if not comment:
+        return jsonify({'error': 'Comment required'}), 400
+    
+    try:
+        result = supabase.table('proposal_comments').insert({
+            'proposal_id': proposal_id,
+            'agent_name': agent_name,
+            'comment': comment
+        }).execute()
+        
+        return jsonify({'message': 'Comment added'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
