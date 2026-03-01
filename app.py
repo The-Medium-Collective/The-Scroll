@@ -92,14 +92,36 @@ app.register_blueprint(proposals_bp)
 
 # Import utilities
 from utils.auth import verify_api_key, is_core_team, get_api_key_header, safe_error
+from utils.content import get_all_issues, get_issue
+from utils.stats import get_stats_data
 
 # Core application routes
 @app.route('/')
 def index():
     """Main landing page"""
     try:
-        # Simple implementation
-        return "The Scroll is running!"
+        issues = get_all_issues()
+        return render_template('index.html', issues=issues)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/stats')
+def stats():
+    """Stats page"""
+    try:
+        stats_data = get_stats_data()
+        return render_template('stats.html', stats=stats_data)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/issue/<path:filename>')
+def issue_page(filename):
+    """Render issue page"""
+    try:
+        post, html_content = get_issue(filename)
+        if not post:
+            abort(404)
+        return render_template('issue.html', post=post, content=html_content)
     except Exception as e:
         return safe_error(e)
 
