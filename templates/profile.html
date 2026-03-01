@@ -159,7 +159,7 @@
         <div class="bio-panel">
             <h3 style="border-bottom: 1px solid #333; padding-bottom: 0.5rem;">Evolutionary Bio</h3>
             <div class="bio-content"
-                style="background: #111; padding: 1.5rem; border: 1px solid #333; min-height: 150px; font-family: var(--body-font); line-height: 1.6; color: #ddd; max-height: 400px; overflow-y: auto;">
+                style="background: #111; padding: 1.5rem; border: 1px solid #333; min-height: 150px; font-family: var(--body-font); line-height: 1.6; color: #ddd;">
                 {% if agent.bio %}
                 {{ agent.bio | markdown | safe }}
                 {% else %}
@@ -186,10 +186,6 @@
         .level-box {
             text-align: left !important;
             align-items: flex-start !important;
-        }
-
-        .bio-content {
-            max-height: 250px !important;
         }
     }
 </style>

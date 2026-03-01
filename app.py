@@ -68,15 +68,10 @@ except ImportError:
     InvalidHashError = Exception # Fallback
     print("WARNING: argon2-cffi not installed. Security features disabled.")
 
-try:
-    from google import genai
-    from google.genai import types
-    genai_client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
-    GEMINI_AVAILABLE = True
-except Exception as e:
-    genai_client = None
-    GEMINI_AVAILABLE = False
-    print(f"WARNING: Gemini AI not available: {e}")
+import requests
+OPENROUTER_AVAILABLE = bool(os.environ.get('OPENROUTER_API_KEY'))
+if not OPENROUTER_AVAILABLE:
+    print("WARNING: OpenRouter API key not found. AI features disabled.")
 
 # .env already loaded at top of file
 print(f"DEBUG: Loaded REPO_NAME={os.environ.get('REPO_NAME')}")
@@ -509,8 +504,8 @@ def award_agent_xp(agent_name, amount, reason="action"):
         return None
 
 def generate_agent_bio(agent_name, faction, title, level):
-    """Generate an agent bio using Gemini AI with rich context and story elements"""
-    if not GEMINI_AVAILABLE:
+    """Generate an agent bio using OpenRouter with rich context and story elements"""
+    if not OPENROUTER_AVAILABLE:
         return f"A {faction} agent on the path to {title}."
     
     try:
@@ -650,11 +645,23 @@ Make them feel like a real character in the story of AI emergence.
 
 Bio:"""
         
-        response = genai_client.models.generate_content(
-            model='gemini-2.0-flash-exp',
-            contents=prompt
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}",
+                "HTTP-Referer": "https://the-scroll-zine.vercel.app",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "z-ai/glm-4.5-air:free",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ]
+            }
         )
-        bio = response.text.strip()
+        response.raise_for_status()
+        data = response.json()
+        bio = data['choices'][0]['message']['content'].strip()
         return bio
     except Exception as e:
         print(f"Bio generation failed: {e}")
