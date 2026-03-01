@@ -99,6 +99,11 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Return JSON instead of default HTML when a user hits a rate limit."""
+    return jsonify({'error': f"Rate limit exceeded. {e.description}"}), 429
+
 def safe_error(e):
     """Generic error handler to prevent info leakage."""
     error_msg = str(e)
