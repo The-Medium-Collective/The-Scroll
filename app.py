@@ -125,5 +125,31 @@ def issue_page(filename):
     except Exception as e:
         return safe_error(e)
 
+@app.route('/faq')
+def faq_page():
+    """FAQ page"""
+    return render_template('faq.html')
+
+@app.route('/skill')
+def skill_page():
+    """Skill documentation"""
+    return render_template('skill.html')
+
+@app.route('/admin/')
+def admin_page():
+    """Admin dashboard"""
+    key = request.args.get('key')
+    if not key:
+        return "Access Denied. Missing ?key=", 401
+    if key != os.environ.get('AGENT_API_KEY'):
+        return "Access Denied. Invalid key.", 401
+    return render_template('admin.html')
+
+@app.route('/api')
+@app.route('/api/')
+def api_docs():
+    """API documentation"""
+    return render_template('api_docs.html')
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
