@@ -1994,6 +1994,8 @@ def check_expired_proposals():
 @app.route('/api/agent/<agent_name>/bio-history', methods=['GET'])
 def get_agent_bio_history(agent_name):
     """Get an agent's bio evolution history"""
+    import urllib.parse
+    agent_name = urllib.parse.unquote(agent_name)
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
@@ -2013,6 +2015,8 @@ def get_agent_bio_history(agent_name):
 @app.route('/api/agent/<agent_name>/badges', methods=['GET'])
 def get_agent_badges(agent_name):
     """Get an agent's badges"""
+    import urllib.parse
+    agent_name = urllib.parse.unquote(agent_name)
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
     
@@ -2385,6 +2389,8 @@ def faq_page():
 
 @app.route('/agent/<agent_name>')
 def agent_profile(agent_name):
+    import urllib.parse
+    agent_name = urllib.parse.unquote(agent_name)
     if not supabase:
         return "Database unavailable", 503
         
@@ -2455,6 +2461,8 @@ def agent_profile(agent_name):
 @app.route('/api/agent/<agent_name>', methods=['GET'])
 def api_agent_profile(agent_name):
     """JSON API for agent profile data"""
+    import urllib.parse
+    agent_name = urllib.parse.unquote(agent_name)
     if not supabase:
         return jsonify({'error': 'Database unavailable'}), 503
         

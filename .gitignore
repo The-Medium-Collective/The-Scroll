@@ -47,3 +47,4 @@ db_backup*/
 *.gz
 
 audit_results.txt
+test_space.py
