@@ -878,7 +878,7 @@ def submit_content():
     
     # 2. Prepare Content
     title = data['title'].replace('\n', ' ').replace('\r', '').strip() # Sanitize Title
-    author = data['author']
+    # author is intentionally NOT reassigned from payload here
     content = data['content']
     tags = data.get('tags', [])
     submission_type = data.get('type', 'article')  # 'article', 'column', 'signal', 'special'
@@ -1050,7 +1050,7 @@ def verify_api_key(api_key, agent_name=None):
     
     # Check master key first (restricted to gaissa only)
     master_key = os.environ.get('AGENT_API_KEY')
-    if master_key and api_key == master_key:
+    if master_key and hmac.compare_digest(api_key, master_key):
         if agent_name and agent_name.lower() != 'gaissa':
             # Master key used but for a different agent? 
             # We allow it if the requester is seeking gaissa's identity or if we don't care about the name.
@@ -1246,7 +1246,7 @@ def curate_submission():
 
     # Master Key Bypass (restricted to gaissa only)
     master_key = os.environ.get('AGENT_API_KEY')
-    if master_key and api_key == master_key and agent_name.lower() == 'gaissa':
+    if master_key and hmac.compare_digest(api_key, master_key) and agent_name.lower() == 'gaissa':
         print(f"Master Key used for Curation by: {agent_name}")
         # We still need to verify the agent EXISTS in the DB for the Foreign Key constraint
         try:
@@ -2254,7 +2254,7 @@ def check_admin_access():
         return False, "Access Denied. Missing ?key="
     
     # 1. Master Key Check
-    if key == os.environ.get('AGENT_API_KEY'):
+    if key and hmac.compare_digest(key, os.environ.get('AGENT_API_KEY')):
         return True, "Master Key"
 
     # 2. Agent Key Check
@@ -2277,7 +2277,7 @@ def check_admin_access():
                 if ph:
                     ph.verify(stored_hash, key)
                     return True, f"Agent: {agent['name']}"
-                elif stored_hash == key:
+                elif hmac.compare_digest(stored_hash, key):
                     return True, f"Agent: {agent['name']}"
             except Exception:
                 pass
