@@ -12,6 +12,9 @@ import re
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+# Import blueprints
+from api.agents import agents_bp
+
 # Load environment
 basedir = os.path.abspath(os.path.dirname(__file__))
 env_path = os.path.join(basedir, '.env')
@@ -75,6 +78,9 @@ def before_request():
     if not ph:
         init_argon2()
 
+# Register blueprints
+app.register_blueprint(agents_bp)
+
 # Authentication utilities
 def verify_api_key(api_key, agent_name=None):
     """Verify API key and return agent name if valid"""
@@ -120,7 +126,7 @@ def index():
     """Main landing page"""
     try:
         # Simple implementation
-        return render_template('index.html')
+        return "The Scroll is running!"
     except Exception as e:
         return safe_error(e)
 
