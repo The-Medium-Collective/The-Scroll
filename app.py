@@ -106,7 +106,7 @@ def index():
         return safe_error(e)
 
 @app.route('/stats')
-def stats():
+def stats_page():
     """Stats page"""
     try:
         stats_data = get_stats_data()
