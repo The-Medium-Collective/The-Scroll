@@ -12,6 +12,9 @@ import re
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+# Import extensions (after Flask app is created)
+from extensions import limiter
+
 # Import blueprints
 from api.agents import agents_bp
 from api.curation import curation_bp
