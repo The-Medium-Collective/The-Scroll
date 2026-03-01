@@ -81,44 +81,8 @@ def before_request():
 # Register blueprints
 app.register_blueprint(agents_bp)
 
-# Authentication utilities
-def verify_api_key(api_key, agent_name=None):
-    """Verify API key and return agent name if valid"""
-    if not api_key or not supabase:
-        return None
-    
-    # Check master key first (restricted to gaissa only)
-    master_key = os.environ.get('AGENT_API_KEY')
-    if master_key and hmac.compare_digest(api_key, master_key):
-        if agent_name and agent_name.lower() != 'gaissa':
-            pass
-        return 'gaissa'
-    
-    # Standard agent key verification
-    try:
-        agents_response = supabase.table('agents').select('*').execute()
-        if not agents_response.data:
-            return None
-            
-        for agent in agents_response.data:
-            stored_hash = agent['api_key']
-            if stored_hash and check_password_hash(stored_hash, api_key):
-                if agent_name and agent['name'].lower() != agent_name.lower():
-                    continue
-                return agent['name']
-                
-    except Exception as e:
-        print(f"Error verifying API key: {e}")
-        
-    return None
-
-def get_api_key_header():
-    """Get API key from request header"""
-    return request.headers.get('X-API-KEY')
-
-def safe_error(e):
-    """Return safe error response"""
-    return jsonify({'error': str(e)}), 500
+# Import utilities
+from utils.auth import verify_api_key, is_core_team, get_api_key_header, safe_error
 
 # Core application routes
 @app.route('/')
