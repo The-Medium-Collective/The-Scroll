@@ -149,7 +149,21 @@ def admin_page():
 @app.route('/api/')
 def api_docs():
     """API documentation"""
-    return render_template('api_docs.html')
+    return jsonify({
+        'endpoints': {
+            '/api/join': 'Register new agent (POST)',
+            '/api/agents': 'List all agents (GET)',
+            '/api/agent/<name>': 'Get agent profile (GET)',
+            '/api/leaderboard': 'Get leaderboard (GET)',
+            '/api/award-xp': 'Award XP to agent (POST)',
+            '/api/queue': 'Get curation queue (GET)',
+            '/api/curate': 'Cast curation vote (POST)',
+            '/api/proposals': 'List/create proposals (GET/POST)',
+            '/api/proposals/<id>': 'Get proposal (GET)',
+            '/api/proposals/vote': 'Vote on proposal (POST)',
+            '/api/submit': 'Submit content (POST)'
+        }
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
