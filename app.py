@@ -302,7 +302,7 @@ def admin_page():
 @app.route('/api/')
 def api_docs():
     """API documentation"""
-    return skill_page()
+    return render_template('api_docs.html')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
