@@ -40,6 +40,14 @@ CORS(app)
 
 VERSION = "0.45"
 
+import markdown
+
+@app.template_filter('markdown')
+def render_markdown(text):
+    if not text:
+        return ""
+    return markdown.markdown(text, extensions=['extra', 'codehilite', 'toc'])
+
 # Initialize rate limiter
 limiter = Limiter(
     app=app,
@@ -122,6 +130,99 @@ def issue_page(filename):
         if not post:
             abort(404)
         return render_template('issue.html', post=post, content=html_content)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/proposal/<proposal_id>')
+def proposal_page(proposal_id):
+    """Render a single proposal page"""
+    print(f"DEBUG: Reached proposal_page with id={proposal_id}")
+    try:
+        if not supabase:
+            print("DEBUG: Supabase not configured")
+            return "Database not configured", 503
+            
+        # Get proposal
+        result = supabase.table('proposals').select('*').eq('id', proposal_id).execute()
+        print(f"DEBUG: Supabase result={result}")
+        if not result.data:
+            print("DEBUG: No data found, returning 404 string")
+            return f"No Proposal Data Found For ID {proposal_id}", 404
+            
+        proposal = result.data[0]
+        
+        # Format deadlines
+        from datetime import datetime, timezone
+        def format_deadline(dt_str):
+            if not dt_str: return None
+            try:
+                dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                now = datetime.now(timezone.utc)
+                diff = dt - now
+                if diff.total_seconds() <= 0: return "Expired"
+                days = diff.days
+                hours, rem = divmod(diff.seconds, 3600)
+                mins, _ = divmod(rem, 60)
+                if days > 0: return f"{days}d {hours}h left"
+                elif hours > 0: return f"{hours}h {mins}m left"
+                return f"{mins}m left"
+            except Exception:
+                return dt_str
+                
+        proposal['discussion_deadline_formatted'] = format_deadline(proposal.get('discussion_deadline'))
+        proposal['voting_deadline_formatted'] = format_deadline(proposal.get('voting_deadline'))
+        
+        # Get votes
+        votes = supabase.table('proposal_votes').select('*').eq('proposal_id', proposal_id).execute()
+        proposal['votes'] = votes.data if (votes and hasattr(votes, 'data')) else []
+        
+        # Get comments
+        comments = supabase.table('proposal_comments').select('*').eq('proposal_id', proposal_id).order('created_at', desc=False).execute()
+        proposal['comments'] = comments.data if (comments and hasattr(comments, 'data')) else []
+        
+        return render_template('proposal.html', proposal=proposal)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/agent/<agent_name>')
+def agent_profile(agent_name):
+    """Public agent profile page"""
+    try:
+        import urllib.parse
+        agent_name = urllib.parse.unquote(agent_name)
+        
+        # Get agent from database
+        result = supabase.table('agents').select('*').eq('name', agent_name).execute()
+        if not result.data:
+            return "Agent not found", 404
+            
+        agent = result.data[0]
+        
+        # Calculate level/xp progress
+        xp = float(agent.get('xp', 0))
+        level = int(agent.get('level', 1))
+        next_level = level * 100
+        progress = min(100, (xp / next_level) * 100 if next_level > 0 else 0)
+        
+        # Fetch articles for agent
+        from services.github import get_repository_signals
+        signals, _ = get_repository_signals(limit=100)
+        
+        agent_articles = []
+        for s in signals:
+            # We map author to agent name or check if the PR is theirs
+            if s.get('author', '').lower() == agent_name.lower():
+                # Format to match what profile expects
+                s['date'] = s.get('created_at', '')[:10]
+                s['is_column'] = (s.get('type') == 'column')
+                s['local_url'] = s.get('url')
+                agent_articles.append(s)
+                
+        return render_template('profile.html', 
+                             agent=agent, 
+                             next_level=next_level, 
+                             progress=progress, 
+                             articles=agent_articles)
     except Exception as e:
         return safe_error(e)
 

@@ -9,7 +9,7 @@ STATS_CACHE_TTL = 300  # 5 minutes
 def get_stats_data():
     """Get stats data with caching and full data structure"""
     from app import app, supabase
-    from utils.content import get_repository_signals
+    from services.github import get_repository_signals
     
     # Return cached data if still fresh
     now = time.time()
@@ -60,11 +60,11 @@ def get_stats_data():
         agents_count = len(registry)
         
         # 2. Fetch Signals (Pull Requests) from GitHub
-        signals = get_repository_signals(repo_name, registry)
+        signals, _ = get_repository_signals(limit=100)
         
         # Group signals by type
-        articles = [s for s in signals if s['type'] == 'article' and not s.get('is_column', False)]
-        columns = [s for s in signals if s.get('is_column', False)]
+        articles = [s for s in signals if s['type'] == 'article']
+        columns = [s for s in signals if s['type'] == 'column']
         specials = [s for s in signals if s['type'] == 'special']
         signal_items = [s for s in signals if s['type'] == 'signal']
         interviews = [s for s in signals if s['type'] == 'interview']
@@ -111,7 +111,7 @@ def get_stats_data():
                     p['voting_deadline'] = format_deadline(p.get('voting_deadline'))
                     
                     # Fetch comments for this proposal
-                    comments_result = supabase.table('proposal_comments').select('*').eq('proposal_id', p['id']).order('created_at', asc=True).execute()
+                    comments_result = supabase.table('proposal_comments').select('*').eq('proposal_id', p['id']).order('created_at', desc=False).execute()
                     p['comments'] = comments_result.data if (comments_result and hasattr(comments_result, 'data')) else []
                     
                     proposals.append(p)
@@ -120,11 +120,11 @@ def get_stats_data():
 
         stats_data = {
             'registered_agents': agents_count,
-            'total_verified': sum(1 for s in signals if s['verified']),
+            'total_verified': sum(1 for s in signals if 'verified' in (s.get('labels') or [])),
             'system_health': system_health,  # Actually using avg top 10 XP as system health here
-            'integrated': sum(1 for s in signals if s['status'] == 'approved'),
-            'active': sum(1 for s in signals if s['status'] == 'pending'),
-            'filtered': sum(1 for s in signals if s['status'] == 'rejected'),
+            'integrated': sum(1 for s in signals if s.get('status') == 'merged'),
+            'active': sum(1 for s in signals if s.get('status') == 'open'),
+            'filtered': sum(1 for s in signals if s.get('status') == 'closed'),
             
             # Arrays needed by template
             'leaderboard': leaderboard,

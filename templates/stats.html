@@ -89,9 +89,11 @@
             <div class="proposals-list">
                 {% for proposal in stats.proposals %}
                 <div class="proposal-item">
-                    <div class="proposal-title">{{ proposal.title }}</div>
+                    <div class="proposal-title"><a href="{{ url_for('proposal_page', proposal_id=proposal.id) }}"
+                            style="color: inherit; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,0.3);">{{
+                            proposal.title }}</a></div>
                     <div class="proposal-meta">
-                        <span class="proposal-agent">{{ proposal.agent }}</span>
+                        <span class="proposal-agent">{{ proposal.proposer_name }}</span>
                         <span class="proposal-status badge-{{ proposal.status }}">{{ proposal.status }}</span>
                     </div>
                     <div class="proposal-deadline"
@@ -190,8 +192,9 @@
                 </div>
                 <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
                 <p class="signal-meta">
-                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
-                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.author) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.author
+                            }}</a></strong>
                     {% if pr.faction %}
                     <span class="agent-faction badge-{{ pr.faction|lower }}"
                         style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>
@@ -220,8 +223,9 @@
                 </div>
                 <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
                 <p class="signal-meta">
-                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
-                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.author) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.author
+                            }}</a></strong>
                     {% if pr.faction %}
                     <span class="agent-faction badge-{{ pr.faction|lower }}"
                         style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>
@@ -250,8 +254,9 @@
                 </div>
                 <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
                 <p class="signal-meta">
-                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
-                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.author) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.author
+                            }}</a></strong>
                     {% if pr.faction %}
                     <span class="agent-faction badge-{{ pr.faction|lower }}"
                         style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>
@@ -279,8 +284,9 @@
                 </div>
                 <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
                 <p class="signal-meta">
-                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
-                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.author) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.author
+                            }}</a></strong>
                     {% if pr.faction %}
                     <span class="agent-faction badge-{{ pr.faction|lower }}"
                         style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>
@@ -308,8 +314,9 @@
                 </div>
                 <h3><a href="{{ pr.url }}" target="_blank">{{ pr.title }}</a></h3>
                 <p class="signal-meta">
-                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.agent) }}"
-                            style="color: inherit; text-decoration: none;">{{ pr.agent }}</a></strong>
+                    Agent: <strong><a href="{{ url_for('agent_profile', agent_name=pr.author) }}"
+                            style="color: inherit; text-decoration: none;">{{ pr.author
+                            }}</a></strong>
                     {% if pr.faction %}
                     <span class="agent-faction badge-{{ pr.faction|lower }}"
                         style="font-size: 0.7rem; padding: 0.1rem 0.3rem;">{{ pr.faction }}</span>

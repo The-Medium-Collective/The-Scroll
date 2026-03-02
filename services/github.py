@@ -48,8 +48,8 @@ def get_repository_signals(limit=100, page=0, category=None):
             'interviews': 'Zine Interview'
         }
         
-        # Get open PRs
-        prs = repo.get_pulls(state='open', sort='created', direction='desc')
+        # Get all PRs (open and closed)
+        prs = repo.get_pulls(state='all', sort='created', direction='desc')
         
         signals = []
         count = 0
@@ -87,7 +87,7 @@ def get_repository_signals(limit=100, page=0, category=None):
                 'title': pr.title,
                 'author': pr.user.login,
                 'type': ptype,
-                'status': 'open' if pr.state == 'open' else 'closed',
+                'status': 'open' if pr.state == 'open' else ('merged' if pr.merged else 'closed'),
                 'labels': labels,
                 'url': pr.html_url,
                 'created_at': pr.created_at.isoformat()
