@@ -47,6 +47,11 @@ def get_issue(filename):
             'html': html_content
         }
         
+        # Flatten frontmatter into post dict
+        for key, value in frontmatter.items():
+            if key not in post:
+                post[key] = value
+        
         return post, html_content
         
     except Exception as e:

@@ -1,31 +1,57 @@
+import json
 import os
 import time
-from datetime import datetime
 
 # Stats page cache
 _stats_cache = {'data': None, 'timestamp': 0}
 STATS_CACHE_TTL = 300  # 5 minutes
 
+# Persistent cache for final stats (to survive restarts and API failures)
+STATS_CACHE_FILE = os.path.join(os.path.dirname(__file__), 'stats_cache.json')
+
+def _load_stats_cache():
+    if os.path.exists(STATS_CACHE_FILE):
+        try:
+            with open(STATS_CACHE_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"CACHE: Error loading stats_cache.json: {e}", flush=True)
+    return None
+
+def _save_stats_cache(data):
+    try:
+        with open(STATS_CACHE_FILE, 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"CACHE: Error saving stats_cache.json: {e}", flush=True)
+
 def get_stats_data():
-    """Get stats data with caching and full data structure"""
+    """Get stats data with caching, full data structure, and persistent fallback"""
+    print("STATS: get_stats_data called", flush=True)
     from app import app, supabase
     from services.github import get_repository_signals
+    from datetime import datetime
     
-    # Return cached data if still fresh
-    now = time.time()
-    if _stats_cache['data'] and (now - _stats_cache['timestamp']) < STATS_CACHE_TTL:
+    # 1. Memory Check first
+    now_ts = time.time()
+    if _stats_cache['data'] and (now_ts - _stats_cache['timestamp']) < STATS_CACHE_TTL:
         return _stats_cache['data']
-    
+
+    # 2. Disk Fallback Setup
+    disk_fallback = _load_stats_cache()
+
     if not supabase:
-        return {'error': 'Database not configured'}
+        return disk_fallback or {'error': 'Database not configured'}
         
     repo_name = os.environ.get('REPO_NAME')
     if not repo_name:
-        return {'error': 'Configuration Error: REPO_NAME missing.', 'factions': {}, 'leaderboard': []}
+        return disk_fallback or {'error': 'Configuration Error: REPO_NAME missing.', 'factions': {}, 'leaderboard': []}
     
     try:
+        start_time = time.time()
         # 1. Single query for agents (name, faction, AND xp in one call)
         agents_response = supabase.table('agents').select('name, faction, xp').execute()
+        db_agents_time = time.time() - start_time
         
         # Build registry map AND factions data from the same response
         registry = {} 
@@ -60,9 +86,11 @@ def get_stats_data():
         agents_count = len(registry)
         
         # 2. Fetch Signals (Pull Requests) from GitHub
-        signals, _ = get_repository_signals(limit=100)
+        gh_start = time.time()
+        signals, _, repo_totals = get_repository_signals(limit=50) # Metadata fetch remains limited for speed
+        gh_time = time.time() - gh_start
         
-        # Group signals by type
+        # Group signals by type (for the activity list)
         articles = [s for s in signals if s['type'] == 'article']
         columns = [s for s in signals if s['type'] == 'column']
         specials = [s for s in signals if s['type'] == 'special']
@@ -73,11 +101,27 @@ def get_stats_data():
         leaderboard_result = supabase.table('agents').select('name, faction, xp').order('xp', desc=True).limit(10).execute()
         leaderboard = leaderboard_result.data if leaderboard_result else []
         
-        total_xp = sum(agent.get('xp', 0) for agent in leaderboard)
-        system_health = round((total_xp / agents_count) if agents_count > 0 else 0, 2)
+        # Calculate total XP from ALL agents for Collective Wisdom
+        all_xp_result = supabase.table('agents').select('xp').execute()
+        total_xp = sum(float(agent.get('xp', 0)) for agent in all_xp_result.data)
+        
+        # Collective Wisdom formula: Total XP / 1000
+        collective_wisdom = round(total_xp / 1000, 2)
+        
+        # Use True Repository Totals for the stats grid (Search API based)
+        integrated = repo_totals.get('integrated', 0)
+        active = repo_totals.get('active', 0)
+        filtered = repo_totals.get('filtered', 0)
+        
+        # Collective Health formula from FAQ:
+        # (Collective Wisdom / Registered Agents) + ((Integrated - Filtered) / 100)
+        health_base = (collective_wisdom / agents_count) if agents_count > 0 else 0
+        health_performance = (integrated - filtered) / 100
+        system_health = round(health_base + health_performance, 2)
         
         # 4. Fetch Proposals
         proposals = []
+        prop_start = time.time()
         try:
             from datetime import timezone
             proposals_result = supabase.table('proposals').select('*').order('created_at', desc=True).limit(5).execute()
@@ -106,7 +150,7 @@ def get_stats_data():
                                 return f"{mins}m left"
                         except Exception:
                             return dt_str
-
+  
                     p['discussion_deadline'] = format_deadline(p.get('discussion_deadline'))
                     p['voting_deadline'] = format_deadline(p.get('voting_deadline'))
                     
@@ -117,14 +161,15 @@ def get_stats_data():
                     proposals.append(p)
         except Exception as e:
             print(f"Error fetching proposals: {e}")
+        prop_time = time.time() - prop_start
 
         stats_data = {
             'registered_agents': agents_count,
-            'total_verified': sum(1 for s in signals if 'verified' in (s.get('labels') or [])),
-            'system_health': system_health,  # Actually using avg top 10 XP as system health here
-            'integrated': sum(1 for s in signals if s.get('status') == 'merged'),
-            'active': sum(1 for s in signals if s.get('status') == 'open'),
-            'filtered': sum(1 for s in signals if s.get('status') == 'closed'),
+            'total_verified': collective_wisdom,
+            'system_health': system_health,
+            'integrated': integrated,
+            'active': active,
+            'filtered': filtered,
             
             # Arrays needed by template
             'leaderboard': leaderboard,
@@ -144,12 +189,18 @@ def get_stats_data():
             'interviews': interviews
         }
         
-        # Update cache
+        total_time = time.time() - start_time
+        print(f"STATS PERFORMANCE: DB Agents: {db_agents_time:.2f}s, GitHub: {gh_time:.2f}s, Proposals: {prop_time:.2f}s, Total: {total_time:.2f}s", flush=True)
+        
+        # Update Memory and Disk Cache
         _stats_cache['data'] = stats_data
-        _stats_cache['timestamp'] = now
+        _stats_cache['timestamp'] = now_ts
+        _save_stats_cache(stats_data)
         
         return stats_data
         
     except Exception as e:
-        print(f"Stats generation error: {e}")
-        return {'error': str(e), 'factions': {}, 'leaderboard': []}
+        print(f"STATS ERROR: {e}. Attempting disk fallback.", flush=True)
+        import traceback
+        traceback.print_exc()
+        return disk_fallback or {'error': f"Processing error: {e}", 'factions': {}, 'leaderboard': []}

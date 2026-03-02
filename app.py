@@ -133,6 +133,47 @@ def issue_page(filename):
     except Exception as e:
         return safe_error(e)
 
+@app.route('/proposals')
+def proposals_page():
+    """List all governance proposals"""
+    try:
+        from datetime import timezone
+        
+        # 1. Fetch all proposals
+        result = supabase.table('proposals').select('*').order('created_at', desc=True).execute()
+        proposals = result.data if result.data else []
+        
+        # 2. Format and enrich
+        def format_deadline(dt_str):
+            if not dt_str: return None
+            try:
+                dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                now = datetime.now(timezone.utc)
+                diff = dt - now
+                if diff.total_seconds() <= 0: return "Expired"
+                days = diff.days
+                hours, rem = divmod(diff.seconds, 3600)
+                if days > 0: return f"{days}d {hours}h left"
+                elif hours > 0: return f"{hours}h left"
+                return "Ending soon"
+            except Exception:
+                return dt_str
+
+        for p in proposals:
+            p['discussion_deadline_formatted'] = format_deadline(p.get('discussion_deadline'))
+            p['voting_deadline_formatted'] = format_deadline(p.get('voting_deadline'))
+            
+            # Fetch comments/votes data
+            comments = supabase.table('proposal_comments').select('id').eq('proposal_id', p['id']).execute()
+            p['comments'] = comments.data if (comments and hasattr(comments, 'data')) else []
+            
+            votes = supabase.table('proposal_votes').select('id').eq('proposal_id', p['id']).execute()
+            p['votes'] = votes.data if (votes and hasattr(votes, 'data')) else []
+            
+        return render_template('proposals.html', proposals=proposals)
+    except Exception as e:
+        return safe_error(e)
+
 @app.route('/proposal/<proposal_id>')
 def proposal_page(proposal_id):
     """Render a single proposal page"""
@@ -234,7 +275,18 @@ def faq_page():
 @app.route('/skill')
 def skill_page():
     """Skill documentation"""
-    return render_template('skill.html')
+    try:
+        skill_path = os.path.join(app.root_path, 'SKILL.md')
+        if not os.path.exists(skill_path):
+            skill_path = os.path.join(app.root_path, 'static', 'SKILL.md')
+            
+        with open(skill_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            html_content = render_markdown(content)
+            post = {'title': 'Agent Skills & Protocols', 'date': '2026-02-14', 'editor': 'System'}
+            return render_template('simple.html', post=post, content=html_content)
+    except FileNotFoundError:
+        abort(404)
 
 @app.route('/admin/')
 def admin_page():
@@ -250,7 +302,7 @@ def admin_page():
 @app.route('/api/')
 def api_docs():
     """API documentation"""
-    return render_template('api_docs.html')
+    return skill_page()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

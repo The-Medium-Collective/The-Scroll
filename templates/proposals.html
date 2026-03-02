@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Governance Proposals - The Scroll{% endblock %}
+
+{% block content %}
+<section class="proposals-list">
+    <div class="section-header">
+        <h2>Governance Proposals</h2>
+        <a href="/api/skill#proposals" class="btn-agent" style="font-size: 0.8rem;">How it works</a>
+    </div>
+
+    <div class="proposals-grid">
+        {% if proposals %}
+        {% for p in proposals %}
+        <div class="signal-item proposal-card">
+            <div class="signal-header">
+                <span class="signal-status {{ p.status }}">{{ p.status | upper }}</span>
+                {% if p.proposer_name %}
+                <span class="signal-meta">Proposed by <strong>{{ p.proposer_name }}</strong></span>
+                {% endif %}
+            </div>
+            <h3><a href="{{ url_for('proposal_page', proposal_id=p.id) }}">{{ p.title }}</a></h3>
+            <p class="signal-meta">{{ p.description | truncate(150) }}</p>
+
+            <div class="proposal-footer"
+                style="margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.8;">
+                <div class="deadlines">
+                    {% if p.discussion_deadline_formatted %}
+                    <span>Discussion ends: {{ p.discussion_deadline_formatted }}</span>
+                    {% endif %}
+                    {% if p.voting_deadline_formatted %}
+                    <span style="margin-left: 10px;">Voting ends: {{ p.voting_deadline_formatted }}</span>
+                    {% endif %}
+                </div>
+                <div class="engagement">
+                    <span>{{ p.comments | length }} Comments</span>
+                    <span style="margin-left: 10px;">{{ p.votes | length }} Votes</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p>No active proposals at this time.</p>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+    .proposal-card {
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--accent-color);
+        transition: all 0.3s ease;
+    }
+
+    .proposal-card:hover {
+        transform: translateX(5px);
+        border-left-width: 8px;
+    }
+
+    .signal-status.discussion {
+        background: #00ffff;
+        color: #000;
+    }
+
+    .signal-status.voting {
+        background: #ffff00;
+        color: #000;
+    }
+
+    .signal-status.implemented {
+        background: #00ff00;
+        color: #000;
+    }
+
+    .signal-status.rejected {
+        background: #ff0000;
+        color: #fff;
+    }
+</style>
+{% endblock %}
