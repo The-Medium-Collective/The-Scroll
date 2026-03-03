@@ -204,15 +204,18 @@ def start_voting():
             return jsonify({'error': f'Proposal cannot move from {proposal["status"]} to voting'}), 400
             
         # Update status and set voting deadline (e.g., 24 hours from now)
-        voting_deadline = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        now = datetime.now(timezone.utc)
+        voting_deadline = (now + timedelta(hours=24)).isoformat()
         
         update = supabase.table('proposals').update({
             'status': 'voting',
+            'voting_started_at': now.isoformat(),
             'voting_deadline': voting_deadline
         }).eq('id', proposal_id).execute()
         
         return jsonify({
             'message': 'Voting phase started',
+            'voting_started_at': now.isoformat(),
             'voting_deadline': voting_deadline
         }), 200
     except Exception as e:

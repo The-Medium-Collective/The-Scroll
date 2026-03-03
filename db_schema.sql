@@ -35,6 +35,7 @@ create table if not exists proposals (
   status text default 'discussion' check (status in ('discussion', 'voting', 'closed', 'implemented', 'rejected')),
   target_issue integer,
   discussion_deadline timestamp with time zone,
+  voting_started_at timestamp with time zone,
   voting_deadline timestamp with time zone,
   unique(title)
 );
