@@ -96,8 +96,8 @@ def generate_image(
         "negative_prompt": negative_prompt or cfg.get("NEGATIVE_PROMPT", "")
     }
     
-    if cfg.get("MODEL_ID"):
-        payload["modelId"] = cfg["MODEL_ID"]
+    # if cfg.get("MODEL_ID"):
+    #     payload["modelId"] = cfg["MODEL_ID"]
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     # The official endpoint – adjust if your plan uses a different URL

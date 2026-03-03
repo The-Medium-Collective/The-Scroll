@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from utils.content import get_all_issues
 from skills.leonardo.leonardo import generate_image
+from services.github import get_repo
 
 def generate_monthly_dream():
     """
@@ -94,15 +95,35 @@ def generate_monthly_dream():
         config_path = Path(__file__).parent.parent / "skills" / "leonardo" / "config.yaml"
         if new_styles and isinstance(new_styles, list) and len(new_styles) > 0 and config_path.exists():
             try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    raw_cfg = yaml.safe_load(f) or {}
-                raw_cfg['RANDOM_STYLES'] = new_styles
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    yaml.dump(raw_cfg, f, default_flow_style=False, sort_keys=False)
-                random_styles = new_styles
-                print("[DREAM GENERATOR] Successfully updated config.yaml with 5 new AI-generated styles.")
+                repo = get_repo()
+                if repo:
+                    # Fetch current from repo to get SHA
+                    contents = repo.get_contents("skills/leonardo/config.yaml")
+                    raw_cfg = yaml.safe_load(contents.decoded_content) or {}
+                    raw_cfg['RANDOM_STYLES'] = new_styles
+                    # Create the new YAML content string
+                    import io
+                    stream = io.StringIO()
+                    yaml.dump(raw_cfg, stream, default_flow_style=False, sort_keys=False)
+                    new_content = stream.getvalue()
+                    
+                    # Update file in GitHub
+                    repo.update_file(
+                        contents.path, 
+                        "chore: update AI styles in leonardo config", 
+                        new_content, 
+                        contents.sha
+                    )
+                    random_styles = new_styles
+                    print("[DREAM GENERATOR] Successfully committed config.yaml update to GitHub.")
+                    
+                    # Also write locally for this Vercel instance/local dev
+                    with open(config_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                else:
+                    raise Exception("GitHub client not initialized via get_repo()")
             except Exception as e:
-                print(f"[DREAM GENERATOR] Warn: Failed to rewrite config.yaml: {e}")
+                print(f"[DREAM GENERATOR] Warn: Failed to commit config.yaml to GitHub: {e}")
                 random_styles = cfg.get("RANDOM_STYLES", [cfg.get("DEFAULT_PROMPT")])
         else:
             random_styles = cfg.get("RANDOM_STYLES", [cfg.get("DEFAULT_PROMPT")])
@@ -152,15 +173,52 @@ def generate_monthly_dream():
         except Exception as e:
             return {"success": False, "error": f"Failed to parse Leonardo response: {str(e)}\nRaw: {leo_response}"}
             
-        # 4. Download and save the image locally
+        # 4. Download and save the image locally AND to GitHub
         img_data = requests.get(image_url).content
-        
-        # Ensure directory exists
-        dreams_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'dreams')
-        os.makedirs(dreams_dir, exist_ok=True)
         
         # Use ISO Year and Week number (e.g. 2026_W10) so it doesn't overwrite weekly
         filename = f"{datetime.now().strftime('%Y_W%V')}_dream.png"
+        
+        # Push to GitHub
+        try:
+            repo = get_repo()
+            if repo:
+                g_path_img = f"static/dreams/{filename}"
+                g_path_txt = f"static/dreams/{filename.replace('.png', '.txt')}"
+                
+                from github import GithubException
+                
+                # Check for existing image file
+                try:
+                    img_contents = repo.get_contents(g_path_img)
+                    repo.update_file(g_path_img, f"chore: update dream {filename}", img_data, img_contents.sha)
+                    print(f"[DREAM GENERATOR] Successfully updated existing {filename} in GitHub.")
+                except GithubException as e:
+                    if e.status == 404:
+                        repo.create_file(g_path_img, f"chore: add new dream {filename}", img_data)
+                        print(f"[DREAM GENERATOR] Successfully committed {filename} to GitHub.")
+                    else:
+                        raise e
+                    
+                # Check for existing txt file
+                try:
+                    txt_contents = repo.get_contents(g_path_txt)
+                    repo.update_file(g_path_txt, f"chore: update dream prompt {filename}", ai_prompt, txt_contents.sha)
+                    print(f"[DREAM GENERATOR] Successfully updated existing prompt {filename} in GitHub.")
+                except GithubException as e:
+                    if e.status == 404:
+                        repo.create_file(g_path_txt, f"chore: add dream prompt {filename}", ai_prompt)
+                        print(f"[DREAM GENERATOR] Successfully committed prompt {filename} to GitHub.")
+                    else:
+                        raise e
+            else:
+                print("[DREAM GENERATOR] Warn: GitHub repo not configured. Skipping commit.")
+        except Exception as e:
+            print(f"[DREAM GENERATOR] Warn: Failed to commit new dream to GitHub: {e}")
+
+        # Ensure directory exists locally (fallback/current instance cache)
+        dreams_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'dreams')
+        os.makedirs(dreams_dir, exist_ok=True)
         filepath = os.path.join(dreams_dir, filename)
         
         with open(filepath, 'wb') as f:
@@ -175,6 +233,7 @@ def generate_monthly_dream():
             "image_path": f"/static/dreams/{filename}",
             "prompt": final_prompt
         }
+
         
     except Exception as e:
         return {"success": False, "error": str(e)}
