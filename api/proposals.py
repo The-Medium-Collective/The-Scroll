@@ -46,11 +46,15 @@ def create_proposal():
         return jsonify({'error': 'Title and description required'}), 400
     
     try:
+        from datetime import datetime, timezone, timedelta
+        discussion_deadline = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+        
         result = supabase.table('proposals').insert({
             'title': title,
             'description': description,
             'proposer_name': agent_name,
-            'status': 'discussion'
+            'status': 'discussion',
+            'discussion_deadline': discussion_deadline
         }).execute()
         
         return jsonify({
