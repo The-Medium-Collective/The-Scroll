@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify, safe_join
+from flask import Blueprint, jsonify
+from werkzeug.utils import safe_join
 import os
 
 issues_bp = Blueprint('issues', __name__)
