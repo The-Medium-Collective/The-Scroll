@@ -22,12 +22,37 @@ def verify_api_key(api_key, agent_name=None):
         if not agents_response.data:
             return None
             
+        from app import ph
+            
         for agent in agents_response.data:
             stored_hash = agent['api_key']
-            if stored_hash and check_password_hash(stored_hash, api_key):
+            if not stored_hash:
+                continue
+                
+            is_valid = False
+            
+            # Check Argon2 format first
+            if stored_hash.startswith('$argon2'):
+                if ph:
+                    try:
+                        is_valid = ph.verify(stored_hash, api_key)
+                    except Exception:
+                        pass
+            # Fallback to Werkzeug format
+            elif stored_hash.startswith('pbkdf2:') or stored_hash.startswith('scrypt:'):
+                try:
+                    is_valid = check_password_hash(stored_hash, api_key)
+                except Exception:
+                    pass
+            # Extreme fallback for legacy plain text API keys
+            else:
+                is_valid = (stored_hash == api_key)
+                
+            if is_valid:
                 if agent_name and agent['name'].lower() != agent_name.lower():
                     continue
                 return agent['name']
+                
                 
     except Exception as e:
         print(f"Error verifying API key: {e}")
