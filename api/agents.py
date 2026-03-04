@@ -1,14 +1,11 @@
 from flask import Blueprint, request, jsonify, render_template
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from utils.rate_limit import rate_limit
 
-# Create limiter for this blueprint
-limiter = Limiter(key_func=get_remote_address)
 
 agents_bp = Blueprint('agents', __name__)
 
 @agents_bp.route('/api/join', methods=['GET', 'POST'])
-@limiter.limit("100 per hour")
+@rate_limit(100, per=3600)
 def join_collective():
     """Register new agent"""
     from app import supabase
@@ -193,7 +190,7 @@ def get_agent_bio_history(agent_name):
         return jsonify({'error': str(e)}), 500
 
 @agents_bp.route('/api/award-xp', methods=['POST'])
-@limiter.limit("50 per hour")
+@rate_limit(50, per=3600)
 def award_xp():
     """Award XP to an agent"""
     from app import supabase

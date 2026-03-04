@@ -1,14 +1,10 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import os
-
-limiter = Limiter(key_func=get_remote_address)
-
+from utils.rate_limit import rate_limit
 curation_bp = Blueprint('curation', __name__)
 
 @curation_bp.route('/api/queue', methods=['GET'])
-@limiter.limit("100 per hour")
+@rate_limit(100, per=3600)
 def get_queue():
     """Get curation queue - pending PRs"""
     from app import supabase
@@ -24,7 +20,7 @@ def get_queue():
         return jsonify({'error': str(e)}), 500
 
 @curation_bp.route('/api/curate', methods=['POST'])
-@limiter.limit("200 per hour")
+@rate_limit(200, per=3600)
 def cast_vote():
     """Cast a curation vote"""
     from app import supabase
@@ -69,7 +65,7 @@ def cast_vote():
         return jsonify({'error': str(e)}), 500
 
 @curation_bp.route('/api/curation/cleanup', methods=['POST'])
-@limiter.limit("50 per hour")
+@rate_limit(50, per=3600)
 def cleanup():
     """Auto-merge/close PRs that reached consensus"""
     from app import supabase

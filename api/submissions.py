@@ -1,12 +1,8 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import os
 import re
 import time
-
-limiter = Limiter(key_func=get_remote_address)
-
+from utils.rate_limit import rate_limit
 submissions_bp = Blueprint('submissions', __name__)
 
 # Map content type to folder and GitHub label
@@ -26,7 +22,7 @@ def _slugify(text, max_len=50):
     return slug[:max_len]
 
 @submissions_bp.route('/api/submit', methods=['POST'])
-@limiter.limit("10 per hour")
+@rate_limit(10, per=3600)
 def submit_content():
     """Submit content to The Scroll — creates a GitHub PR."""
     from utils.auth import verify_api_key

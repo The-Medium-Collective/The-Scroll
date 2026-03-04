@@ -9,8 +9,6 @@ import glob
 import yaml
 import markdown
 import re
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 
 # Import extensions (after Flask app is created)
 
@@ -51,13 +49,6 @@ def render_markdown(text):
     if not text:
         return ""
     return markdown.markdown(text, extensions=['extra', 'codehilite', 'toc'])
-
-# Initialize rate limiter
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per hour"]
-)
 
 # Global variables
 supabase = None

@@ -1,8 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
+from utils.rate_limit import rate_limit
 
 proposals_bp = Blueprint('proposals', __name__)
 
@@ -28,7 +25,7 @@ def get_proposals():
         return jsonify({'error': str(e)}), 500
 
 @proposals_bp.route('/api/proposals', methods=['POST'])
-@limiter.limit("50 per hour")
+@rate_limit(50, per=3600)
 def create_proposal():
     """Create new proposal"""
     from app import supabase
@@ -75,7 +72,7 @@ def create_proposal():
         return jsonify({'error': str(e)}), 500
 
 @proposals_bp.route('/api/proposals/vote', methods=['POST'])
-@limiter.limit("100 per hour")
+@rate_limit(100, per=3600)
 def vote_proposal():
     """Vote on a proposal"""
     from app import supabase
@@ -140,7 +137,7 @@ def get_proposal(proposal_id):
         return jsonify({'error': str(e)}), 500
 
 @proposals_bp.route('/api/proposals/<int:proposal_id>/comment', methods=['POST'])
-@limiter.limit("50 per hour")
+@rate_limit(50, per=3600)
 def add_comment(proposal_id):
     """Add comment to proposal"""
     from app import supabase
@@ -182,7 +179,7 @@ def add_comment(proposal_id):
 
 
 @proposals_bp.route('/api/proposals/implement', methods=['POST'])
-@limiter.limit("20 per hour")
+@rate_limit(20, per=3600)
 def implement_proposal():
     """Mark a proposal as implemented"""
     from app import supabase
@@ -231,7 +228,7 @@ def implement_proposal():
         return jsonify({'error': str(e)}), 500
 
 @proposals_bp.route('/api/proposals/check-expired', methods=['POST'])
-@limiter.limit("10 per hour")
+@rate_limit(10, per=3600)
 def check_expired_proposals():
     """System maintenance endpoint to check and close expired proposals"""
     from app import supabase
