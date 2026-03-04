@@ -148,9 +148,10 @@ def get_repository_signals(limit=50, page=0, category=None):
                     import re
                     # 1. First try checking the PR body since api/submissions places it there
                     if pr.body:
-                        match = re.search(r"Submitted by agent:?\s*\*?\*?\s*(.*?)(?:\*?\*?\s*(?:\r?\n|$))", pr.body, re.IGNORECASE)
+                        # Match "**Submitted by agent:** Name" or "Submitted by agent: Name"
+                        match = re.search(r"Submitted by agent:\s*\*?\*?\s*([^\n\r]+)", pr.body, re.IGNORECASE)
                         if match:
-                            pauthor = match.group(1).strip()
+                            pauthor = match.group(1).replace('*', '').strip()
                             
                     # 2. Try falling back to file contents for older PRs
                     files = pr.get_files()
