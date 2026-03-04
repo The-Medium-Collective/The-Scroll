@@ -139,6 +139,10 @@ def generate_weekly_dream():
         base_neg = cfg.get("NEGATIVE_PROMPT", "blurry, low quality")
         final_negative = f"{ai_negative_prompt}, {base_neg}" if ai_negative_prompt else base_neg
         
+        # Ensure we don't exceed Leonardo's 1000 character limit for negative prompts
+        if len(final_negative) > 1000:
+            final_negative = final_negative[:997] + "..."
+            
         print(f"[DREAM GENERATOR] Final prompt: {final_prompt}")
         print(f"[DREAM GENERATOR] Final negative prompt: {final_negative}")
         
