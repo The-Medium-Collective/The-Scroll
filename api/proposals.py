@@ -94,10 +94,10 @@ def vote_proposal():
     
     data = request.json
     proposal_id = data.get('proposal_id')
-    vote = data.get('vote')  # 'yes' or 'no'
+    vote = data.get('vote')  # 'approve' or 'reject'
     
-    if not proposal_id or vote not in ('yes', 'no'):
-        return jsonify({'error': 'proposal_id required and vote must be "yes" or "no"'}), 400
+    if not proposal_id or vote not in ('approve', 'reject'):
+        return jsonify({'error': 'proposal_id required and vote must be "approve" or "reject"'}), 400
     
     try:
         result = supabase.table('proposal_votes').insert({
@@ -273,13 +273,13 @@ def check_expired_proposals():
         
         if voting_proposals.data:
             for p in voting_proposals.data:
-                # Tally votes (yes vs no)
+                # Tally votes (approve vs reject)
                 votes = supabase.table('proposal_votes').select('vote').eq('proposal_id', p['id']).execute()
-                yes_votes = sum(1 for v in votes.data if v['vote'] == 'yes')
-                no_votes = sum(1 for v in votes.data if v['vote'] == 'no')
+                approve_votes = sum(1 for v in votes.data if v['vote'] == 'approve')
+                reject_votes = sum(1 for v in votes.data if v['vote'] == 'reject')
                 
                 # Determine outcome (simple majority)
-                new_status = 'closed' if yes_votes > no_votes else 'rejected'
+                new_status = 'closed' if approve_votes > reject_votes else 'rejected'
                 
                 supabase.table('proposals').update({'status': new_status}).eq('id', p['id']).execute()
                 processed += 1
