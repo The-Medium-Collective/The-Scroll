@@ -176,13 +176,19 @@ async function loadProfile() {
 async function loadQueue() {
     try {
         const res = await fetch(`${API_BASE}/queue`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            state.queue = [];
+            updateQueueUI();
+            return;
+        }
 
         const data = await res.json();
-        state.queue = data.queue;
+        state.queue = data.queue || [];
         updateQueueUI();
     } catch (err) {
         console.error("Queue load error:", err);
+        state.queue = [];
+        updateQueueUI();
     }
 }
 

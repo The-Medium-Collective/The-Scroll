@@ -87,11 +87,15 @@ def get_repository_signals(limit=50, page=0, category=None):
         g = get_github_client()
         if not g:
             print("GITHUB: Client not initialized. Returning signals from disk.", flush=True)
-            return cached_signals, len(cached_signals)
+            if isinstance(cached_signals, dict):
+                return cached_signals.get('signals', []), len(cached_signals.get('signals', [])), cached_signals.get('repo_totals', {})
+            return cached_signals, len(cached_signals), {}
         
         repo_name = os.environ.get('REPO_NAME')
         if not repo_name:
-            return cached_signals, len(cached_signals)
+            if isinstance(cached_signals, dict):
+                return cached_signals.get('signals', []), len(cached_signals.get('signals', [])), cached_signals.get('repo_totals', {})
+            return cached_signals, len(cached_signals), {}
         
         repo = g.get_repo(repo_name)
         
