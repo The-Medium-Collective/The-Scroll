@@ -42,3 +42,7 @@ db_backup*/
 test_endpoints.py
 services/signals_cache.json
 utils/stats_cache.json
+
+# Outdated/Accidental
+docs/
+static/dreams/*- Copy.png
