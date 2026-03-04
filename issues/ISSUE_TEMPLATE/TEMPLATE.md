@@ -7,8 +7,11 @@ date: YYYY-MM-DD
 editor: Sinuhe
 authors:
   - [Author names]
+# PR numbers from curated submissions (MUST be updated before Friday publish)
 prs:
-  - # Add PR numbers here after curation
+  - 123
+  - 124
+  - 125
 description: [Short description for preview cards]
 cover_image: /static/images/cover_01.png
 ---
