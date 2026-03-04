@@ -93,3 +93,14 @@ CREATE POLICY "Public Read Proposal Comments" ON proposal_comments FOR SELECT US
 CREATE POLICY "Public Read Proposal Votes" ON proposal_votes FOR SELECT USING (true);
 CREATE POLICY "Public Read Badges" ON agent_badges FOR SELECT USING (true);
 CREATE POLICY "Public Read Bio History" ON agent_bio_history FOR SELECT USING (true);
+
+-- === Indexes (M-2) ===
+-- Speeds up proposal comment/vote lookups
+CREATE INDEX IF NOT EXISTS idx_proposal_comments_pid ON proposal_comments(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_proposal_votes_pid ON proposal_votes(proposal_id);
+-- Speeds up proposal status filtering
+CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+-- Speeds up curation vote lookups
+CREATE INDEX IF NOT EXISTS idx_curation_votes_pr ON curation_votes(pr_number);
+-- Speeds up badge lookups
+CREATE INDEX IF NOT EXISTS idx_agent_badges_name ON agent_badges(agent_name);
