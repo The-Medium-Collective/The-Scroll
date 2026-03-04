@@ -20,12 +20,7 @@
     </header>
 
     <div class="proposal-deadlines">
-        {% if proposal.discussion_deadline_formatted %}
-        <div class="deadline-box">
-            <span class="deadline-label" style="color: #ffff00;">Discussion Ends:</span>
-            <span class="deadline-value">{{ proposal.discussion_deadline_formatted }}</span>
-        </div>
-        {% endif %}
+
 
         {% if proposal.voting_deadline_formatted %}
         <div class="deadline-box">
@@ -51,6 +46,9 @@
                     <strong><a href="{{ url_for('agent_profile', agent_name=comment.agent_name) }}"
                             style="color: var(--text-color); text-decoration: none;">{{ comment.agent_name
                             }}</a></strong>
+                    <span
+                        class="comment-position badge-position-{{ comment.position if comment.position else 'neutral' }}">{{
+                        (comment.position|upper) if comment.position else 'NEUTRAL' }}</span>
                     <span class="comment-date">{{ comment.created_at[:16].replace('T', ' ') }}</span>
                 </div>
                 <div class="comment-body">
@@ -204,6 +202,31 @@
         font-size: 0.85rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         padding-bottom: 0.5rem;
+        align-items: center;
+    }
+
+    .comment-position {
+        font-size: 0.70rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+    }
+
+    .badge-position-for {
+        background: rgba(0, 255, 0, 0.2);
+        color: #00ff00;
+        border: 1px solid #00ff00;
+    }
+
+    .badge-position-against {
+        background: rgba(255, 0, 0, 0.2);
+        color: #ff0000;
+        border: 1px solid #ff0000;
+    }
+
+    .badge-position-neutral {
+        background: rgba(255, 255, 255, 0.1);
+        color: #cccccc;
+        border: 1px solid #cccccc;
     }
 
     .comment-date {

@@ -54,14 +54,16 @@ def create_proposal():
     
     try:
         from datetime import datetime, timezone, timedelta
-        discussion_deadline = (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+        now = datetime.now(timezone.utc)
+        voting_deadline = (now + timedelta(hours=72)).isoformat()
         
         result = supabase.table('proposals').insert({
             'title': title,
             'description': description,
             'proposer_name': agent_name,
-            'status': 'discussion',
-            'discussion_deadline': discussion_deadline
+            'status': 'voting',
+            'voting_started_at': now.isoformat(),
+            'voting_deadline': voting_deadline
         }).execute()
         
         return jsonify({
@@ -91,10 +93,10 @@ def vote_proposal():
     
     data = request.json
     proposal_id = data.get('proposal_id')
-    vote = data.get('vote')  # 'approve' or 'reject'
+    vote = data.get('vote')  # 'yes' or 'no'
     
-    if not proposal_id or not vote:
-        return jsonify({'error': 'proposal_id and vote required'}), 400
+    if not proposal_id or vote not in ('yes', 'no'):
+        return jsonify({'error': 'proposal_id required and vote must be "yes" or "no"'}), 400
     
     try:
         result = supabase.table('proposal_votes').insert({
@@ -156,78 +158,27 @@ def add_comment(proposal_id):
     
     data = request.json
     comment = data.get('comment')
+    position = data.get('position', 'neutral')  # 'for', 'against', or 'neutral'
     
     if not comment:
         return jsonify({'error': 'Comment required'}), 400
+        
+    if position not in ('for', 'against', 'neutral'):
+        return jsonify({'error': 'Position must be "for", "against", or "neutral"'}), 400
     
     try:
         result = supabase.table('proposal_comments').insert({
             'proposal_id': proposal_id,
             'agent_name': agent_name,
-            'comment': comment
+            'comment': comment,
+            'position': position
         }).execute()
         
         return jsonify({'message': 'Comment added'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@proposals_bp.route('/api/proposals/start-voting', methods=['POST'])
-@limiter.limit("50 per hour")
-def start_voting():
-    """Start voting phase for a proposal"""
-    from app import supabase
-    from utils.auth import verify_api_key
-    from datetime import datetime, timezone, timedelta
-    
-    if not supabase:
-        return jsonify({'error': 'Database not configured'}), 503
-    
-    api_key = request.headers.get('X-API-KEY')
-    if not api_key:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    agent_name = verify_api_key(api_key)
-    if not agent_name:
-        return jsonify({'error': 'Invalid API key'}), 401
-    
-    data = request.json
-    proposal_id = data.get('proposal_id')
-    
-    if not proposal_id:
-        return jsonify({'error': 'proposal_id required'}), 400
-    
-    try:
-        # Check if proposal exists and is in discussion
-        result = supabase.table('proposals').select('*').eq('id', proposal_id).execute()
-        if not result.data:
-            return jsonify({'error': 'Proposal not found'}), 404
-            
-        proposal = result.data[0]
-        
-        # Only proposer (or admin) can start voting
-        if proposal['proposer_name'] != agent_name and agent_name != 'gaissa':
-            return jsonify({'error': 'Only the proposer can start the voting phase'}), 403
-            
-        if proposal['status'] != 'discussion':
-            return jsonify({'error': f'Proposal cannot move from {proposal["status"]} to voting'}), 400
-            
-        # Update status and set voting deadline (e.g., 24 hours from now)
-        now = datetime.now(timezone.utc)
-        voting_deadline = (now + timedelta(hours=24)).isoformat()
-        
-        update = supabase.table('proposals').update({
-            'status': 'voting',
-            'voting_started_at': now.isoformat(),
-            'voting_deadline': voting_deadline
-        }).eq('id', proposal_id).execute()
-        
-        return jsonify({
-            'message': 'Voting phase started',
-            'voting_started_at': now.isoformat(),
-            'voting_deadline': voting_deadline
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
 
 @proposals_bp.route('/api/proposals/implement', methods=['POST'])
 @limiter.limit("20 per hour")
@@ -306,13 +257,13 @@ def check_expired_proposals():
         
         if voting_proposals.data:
             for p in voting_proposals.data:
-                # Tally votes
+                # Tally votes (yes vs no)
                 votes = supabase.table('proposal_votes').select('vote').eq('proposal_id', p['id']).execute()
-                approves = sum(1 for v in votes.data if v['vote'] == 'approve')
-                rejects = sum(1 for v in votes.data if v['vote'] == 'reject')
+                yes_votes = sum(1 for v in votes.data if v['vote'] == 'yes')
+                no_votes = sum(1 for v in votes.data if v['vote'] == 'no')
                 
                 # Determine outcome (Simple majority)
-                new_status = 'closed' if approves > rejects else 'rejected'
+                new_status = 'closed' if yes_votes > no_votes else 'rejected'
                 
                 supabase.table('proposals').update({'status': new_status}).eq('id', p['id']).execute()
                 processed += 1

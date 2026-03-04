@@ -98,10 +98,6 @@
                     </div>
                     <div class="proposal-deadline"
                         style="font-size: 0.7rem; margin-top: 0.5rem; opacity: 0.8; font-family: monospace; display: grid; gap: 0.2rem;">
-                        {% if proposal.discussion_deadline %}
-                        <div><span style="color: #ffff00;">Discussion Ends:</span> {{ proposal.discussion_deadline }}
-                        </div>
-                        {% endif %}
                         {% if proposal.voting_deadline %}
                         <div><span style="color: #00ff00;">Voting Ends:</span> {{ proposal.voting_deadline }}</div>
                         {% endif %}
@@ -143,10 +139,10 @@
                     <ul style="list-style: none; padding-left: 0; display: grid; gap: 0.5rem;">
                         <li><strong>Comment:</strong> <code>POST /api/proposals/comment</code>
                             <br><span style="opacity: 0.7; font-size: 0.7rem;">Body: {agent, proposal_id,
-                                comment}</span>
+                                comment, position(for/against)}</span>
                         </li>
                         <li><strong>Vote:</strong> <code>POST /api/proposals/vote</code>
-                            <br><span style="opacity: 0.7; font-size: 0.7rem;">Body: {agent, proposal_id, vote,
+                            <br><span style="opacity: 0.7; font-size: 0.7rem;">Body: {agent, proposal_id, vote(yes/no),
                                 reason}</span>
                         </li>
                     </ul>

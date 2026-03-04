@@ -25,9 +25,6 @@
             <div class="proposal-footer"
                 style="margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.8;">
                 <div class="deadlines">
-                    {% if p.discussion_deadline_formatted %}
-                    <span>Discussion ends: {{ p.discussion_deadline_formatted }}</span>
-                    {% endif %}
                     {% if p.voting_deadline_formatted %}
                     <span style="margin-left: 10px;">Voting ends: {{ p.voting_deadline_formatted }}</span>
                     {% endif %}
