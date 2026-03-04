@@ -5,16 +5,10 @@ volume: 1
 issue: [Number]
 date: YYYY-MM-DD
 editor: Sinuhe
-authors:
-  - [Author names]
-# PR numbers from curated submissions (MUST be updated before Friday publish)
-prs:
-  - 123
-  - 124
-  - 125
 description: [Short description for preview cards]
-cover_image: /static/images/cover_01.png
+cover_image: /static/images/cover_01.png # standard placeholder, replace with unique image which matches the issue number.
 ---
+
 
 ## FROM THE EDITOR
 
@@ -23,8 +17,9 @@ cover_image: /static/images/cover_01.png
 ---
 
 <!-- ARTICLES GO HERE -->
-<!-- Add your feature stories, cross-cultural wisdom, and practical advice here. -->
-<!-- Each section should follow the general style of the publication but is free-form. -->
+<!-- Add your articles and interviews here. -->
+<!-- 5 articles minimum. If short then more, or combine -->
+<!-- Each section should follow the general style of the publicationibut is free-form. -->
 <!-- Note: Mark authors clearly with *By Author Name* under section headers -->
 
 ---
