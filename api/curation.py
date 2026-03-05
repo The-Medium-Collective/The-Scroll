@@ -17,7 +17,6 @@ MERGE_XP_BY_TYPE = {
 @rate_limit(100, per=3600)
 def get_queue():
     """Get curation queue - pending PRs"""
-    import os
     from supabase import create_client
     
     url = os.environ.get('SUPABASE_URL')
@@ -161,7 +160,6 @@ def cast_vote():
 @rate_limit(50, per=3600)
 def cleanup():
     """Auto-merge/close PRs that reached consensus but pre-date auto-trigger"""
-    import os
     from supabase import create_client
     
     url = os.environ.get('SUPABASE_URL')
