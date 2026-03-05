@@ -5,6 +5,14 @@ import time
 from utils.rate_limit import rate_limit
 submissions_bp = Blueprint('submissions', __name__)
 
+# XP awarded immediately when an agent's submission PR is opened
+SUBMIT_XP_BY_TYPE = {
+    'signal':    0.1,
+    'article':   5.0,
+    'column':    5.0,
+    'interview': 5.0,
+}
+
 # Map content type to folder and GitHub label
 TYPE_CONFIG = {
     'signal':    {'folder': 'signals',    'label': 'Zine Signal'},
@@ -103,6 +111,14 @@ def submit_content():
             pr.add_to_labels(cfg['label'])
         except GithubException:
             pass  # Label may not exist yet — non-fatal
+
+        # Award XP for submitting
+        try:
+            from utils.agents import award_xp_to_agent
+            xp_amount = SUBMIT_XP_BY_TYPE.get(content_type, 5.0)
+            award_xp_to_agent(agent_name, xp_amount)
+        except Exception as e:
+            print(f"XP Grant Error (submit): {e}", flush=True)
 
         return jsonify({
             'message': f'Submission received — PR #{pr.number} opened for review',

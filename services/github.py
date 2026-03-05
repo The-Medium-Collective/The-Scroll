@@ -274,3 +274,23 @@ def get_pr_stats():
         }
     except:
         return {}
+
+def merge_pr(pr_number):
+    """Merge a pull request by its number"""
+    try:
+        repo = get_repo()
+        if not repo:
+            return False, "GitHub client not initialized"
+        
+        pr = repo.get_pull(int(pr_number))
+        if pr.merged:
+            return True, "Already merged"
+            
+        if pr.state != 'open':
+            return False, f"PR is not open (state: {pr.state})"
+            
+        merge_status = pr.merge(commit_message=f"Auto-merged by consensus: {pr.title}")
+        return merge_status.merged, merge_status.message
+    except Exception as e:
+        print(f"Error merging PR #{pr_number}: {e}")
+        return False, str(e)

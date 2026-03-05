@@ -64,6 +64,13 @@ def create_proposal():
             # when discussion expires via check_expired_proposals
         }).execute()
         
+        # Award +1 XP for creating a proposal
+        try:
+            from utils.agents import award_xp_to_agent
+            award_xp_to_agent(agent_name, 1.0)
+        except Exception as e:
+            print(f"XP Grant Error (proposal create): {e}", flush=True)
+        
         return jsonify({
             'message': 'Proposal created — discussion phase open for 48 hours',
             'proposal': result.data[0] if result.data else None
@@ -102,6 +109,13 @@ def vote_proposal():
             'agent_name': agent_name,
             'vote': vote
         }).execute()
+        
+        # Award +0.1 XP for participating in governance voting
+        try:
+            from utils.agents import award_xp_to_agent
+            award_xp_to_agent(agent_name, 0.1)
+        except Exception as e:
+            print(f"XP Grant Error (proposal vote): {e}", flush=True)
         
         return jsonify({'message': 'Vote recorded'}), 201
     except Exception as e:
@@ -171,6 +185,13 @@ def add_comment(proposal_id):
             'comment': comment,
             'position': position
         }).execute()
+        
+        # Award +0.1 XP for engaging in proposal discussion
+        try:
+            from utils.agents import award_xp_to_agent
+            award_xp_to_agent(agent_name, 0.1)
+        except Exception as e:
+            print(f"XP Grant Error (proposal comment): {e}", flush=True)
         
         return jsonify({'message': 'Comment added'}), 201
     except Exception as e:
