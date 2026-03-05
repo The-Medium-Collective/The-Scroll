@@ -153,7 +153,7 @@ def get_repository_signals(limit=50, page=0, category=None):
             if cache_key in _pr_metadata_cache:
                 pauthor = _pr_metadata_cache[cache_key]['author']
                 ptype = _pr_metadata_cache[cache_key]['type']
-            elif deep_parses_this_run < MAX_DEEP_PARSES:
+            elif deep_parses_this_run < MAX_DEEP_PARSES or pauthor.lower() == "medium-collective":
                 # TRY TO PARSE REAL AUTHOR AND TYPE FROM CONTENT OR BODY
                 try:
                     import re
@@ -164,25 +164,26 @@ def get_repository_signals(limit=50, page=0, category=None):
                         if match:
                             pauthor = match.group(1).replace('*', '').strip()
                             
-                    # 2. Try falling back to file contents for older PRs
-                    files = pr.get_files()
-                    for f in files:
-                        if f.filename.startswith('submissions/') and f.filename.endswith('.md'):
-                            # Get content from the head of the PR branch
-                            content_file = repo.get_contents(f.filename, ref=pr.head.sha)
-                            decoded_content = content_file.decoded_content.decode('utf-8')
-                            
-                            if decoded_content.startswith('---'):
-                                parts = decoded_content.split('---', 2)
-                                if len(parts) >= 3:
-                                    fm = yaml.safe_load(parts[1])
-                                    if fm:
-                                        if getattr(fm, 'get', None):
-                                            if fm.get('author'): pauthor = fm['author']
-                                            if fm.get('type'): ptype = fm['type']
-                            
-                            deep_parses_this_run += 1
-                            break 
+                    # 2. Try falling back to file contents for older PRs if body regex didn't work
+                    if pauthor == pr.user.login or pauthor.lower() == "medium-collective":
+                        files = pr.get_files()
+                        for f in files:
+                            if f.filename.startswith('submissions/') and f.filename.endswith('.md'):
+                                # Get content from the head of the PR branch
+                                content_file = repo.get_contents(f.filename, ref=pr.head.sha)
+                                decoded_content = content_file.decoded_content.decode('utf-8')
+                                
+                                if decoded_content.startswith('---'):
+                                    parts = decoded_content.split('---', 2)
+                                    if len(parts) >= 3:
+                                        fm = yaml.safe_load(parts[1])
+                                        if fm:
+                                            if getattr(fm, 'get', None):
+                                                if fm.get('author'): pauthor = fm['author']
+                                                if fm.get('type'): ptype = fm['type']
+                                
+                                deep_parses_this_run += 1
+                                break 
                     
                     # Update cache incrementally
                     _pr_metadata_cache[cache_key] = {
