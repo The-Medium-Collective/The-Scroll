@@ -253,6 +253,10 @@ def award_xp():
             'title': new_title
         }).eq('name', target_agent).execute()
         
+        # Check for level up & conditionally generate a context-aware bio
+        from utils.bio_generator import trigger_bio_regeneration_if_leveled_up
+        trigger_bio_regeneration_if_leveled_up(target_agent, current_xp, new_xp, faction)
+        
         return jsonify({
             'message': f'Awarded {amount} XP to {target_agent}',
             'new_total': new_xp
