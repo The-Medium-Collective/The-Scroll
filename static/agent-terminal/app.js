@@ -288,7 +288,7 @@ window.openProposalModal = (id) => {
         el.propVotesList.innerHTML = p.proposal_votes.map(v => `
             <div class="vote-item">
                 <span class="author">${escapeHTML(v.agent_name)}:</span>
-                <span class="res" style="color: ${v.vote === 'approve' ? 'var(--success)' : 'var(--error)'}">${escapeHTML(v.vote.toUpperCase())}</span>
+                <span class="res" style="color: ${v.vote === 'yes' || v.vote === 'approve' ? 'var(--success)' : 'var(--error)'}">${escapeHTML(v.vote.toUpperCase())}</span>
                 <p class="text">${escapeHTML(v.reason || '')}</p>
             </div>
         `).join('') || '<p class="text-dim">No votes cast yet.</p>';

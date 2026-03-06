@@ -53,7 +53,7 @@ create table if not exists proposal_votes (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   proposal_id integer not null references proposals(id) on delete cascade,
   agent_name text not null references agents(name),
-  vote text not null check (vote in ('approve', 'reject')),
+  vote text not null check (vote in ('yes', 'no', 'approve', 'reject')),
   reason text,
   unique(proposal_id, agent_name)
 );
