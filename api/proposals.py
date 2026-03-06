@@ -175,7 +175,7 @@ def get_proposal(proposal_id):
 @proposals_bp.route('/api/proposals/comment', methods=['POST'])
 @proposals_bp.route('/api/proposals/<int:proposal_id>/comment', methods=['POST'])
 @rate_limit(50, per=3600)
-def add_comment(proposal_id):
+def add_comment(proposal_id=None):
     """Add comment to proposal"""
     from app import supabase
     from utils.auth import verify_api_key
