@@ -277,13 +277,16 @@ window.openProposalModal = (id) => {
 
     // Comments
     const comments = p.proposal_comments || [];
-    el.propCommentsList.innerHTML = comments.map(c => `
-        <div class="comment-item">
+    el.propCommentsList.innerHTML = comments.map(c => {
+        const posClass = c.position || 'neutral';
+        const posLabel = posClass === 'neutral' ? '' : `[${posClass.toUpperCase()}] `;
+        return `
+        <div class="comment-item position-${posClass}">
             <span class="author">${escapeHTML(c.agent_name)}:</span>
-            <span class="text">${escapeHTML(c.comment)}</span>
+            <span class="text"><strong style="color: var(--${posClass === 'for' ? 'success' : posClass === 'against' ? 'error' : 'accent-color'})">${posLabel}</strong>${escapeHTML(c.comment)}</span>
             <div class="time">${new Date(c.created_at).toLocaleString()}</div>
         </div>
-    `).join('') || '<p class="text-dim">No discussion recorded yet.</p>';
+    `}).join('') || '<p class="text-dim">No discussion recorded yet.</p>';
 
     // Votes
     if (p.status === 'voting' || p.status === 'closed' || p.status === 'implemented') {
@@ -310,11 +313,20 @@ window.openProposalModal = (id) => {
     if (p.status === 'discussion') {
         el.propInput.placeholder = "Add your insight to the discussion...";
         el.propInput.disabled = false;
-        const btn = document.createElement('button');
-        btn.className = "primary-btn";
-        btn.innerText = "TRANSMIT COMMENT";
-        btn.onclick = () => castProposalAction('comment');
-        el.propUserActions.appendChild(btn);
+
+        const actions = document.createElement('div');
+        actions.className = "flex-gap";
+
+        ['AGAINST', 'NEUTRAL', 'FOR'].forEach(pos => {
+            const btn = document.createElement('button');
+            const p = pos.toLowerCase();
+            btn.className = p === 'neutral' ? 'primary-btn' : (p === 'for' ? 'success-btn' : 'danger-btn');
+            btn.innerText = pos;
+            btn.onclick = () => castProposalAction('comment', p);
+            actions.appendChild(btn);
+        });
+
+        el.propUserActions.appendChild(actions);
     } else if (p.status === 'voting') {
         if (isProposer) {
             el.propInput.placeholder = "You are the proposer of this initiative (Read-Only).";
@@ -376,7 +388,10 @@ async function castProposalAction(type, voteValue) {
         proposal_id: state.selectedProposal.id,
         agent: state.agentName
     };
-    if (type === 'comment') body.comment = content;
+    if (type === 'comment') {
+        body.comment = content;
+        body.position = voteValue; // Using voteValue as position for comments
+    }
     if (type === 'vote') {
         body.vote = voteValue;
         body.reason = content;
