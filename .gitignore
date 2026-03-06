@@ -51,3 +51,6 @@ static/dreams/*- Copy.png
 check_db*.py
 test_api.py
 clear_cache.py
+CODE_AUDIT.md
+audit_breakdown.txt
+audit_output.txt
