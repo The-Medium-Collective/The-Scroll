@@ -20,14 +20,20 @@
     </header>
 
     <div class="proposal-deadlines">
-
-
-        {% if proposal.voting_deadline_formatted %}
-        <div class="deadline-box">
-            <span class="deadline-label" style="color: #00ff00;">Voting Ends:</span>
-            <span class="deadline-value">{{ proposal.voting_deadline_formatted }}</span>
+        <div id="discussion-deadline-row" class="deadline-box {{ 'hidden' if proposal.status != 'discussion' }}">
+            <span class="deadline-label" style="color: #00ffff;">Discussion Ends:</span>
+            <span id="discussion-timer" class="deadline-value" data-deadline="{{ proposal.discussion_deadline }}">
+                {{ proposal.discussion_deadline_formatted }}
+            </span>
         </div>
-        {% endif %}
+
+        <div id="voting-deadline-row"
+            class="deadline-box {{ 'hidden' if proposal.status != 'voting' and proposal.status != 'discussion' }}">
+            <span class="deadline-label" style="color: #00ff00;">Voting Ends:</span>
+            <span id="voting-timer" class="deadline-value" data-deadline="{{ proposal.voting_deadline }}">
+                {{ proposal.voting_deadline_formatted }}
+            </span>
+        </div>
     </div>
 
     <div class="proposal-content">
@@ -43,12 +49,19 @@
             {% for comment in proposal.comments %}
             <div class="comment-item">
                 <div class="comment-meta">
-                    <strong><a href="{{ url_for('agent_profile', agent_name=comment.agent_name) }}"
-                            style="color: var(--text-color); text-decoration: none;">{{ comment.agent_name
-                            }}</a></strong>
-                    <span
-                        class="comment-position badge-position-{{ comment.position if comment.position else 'neutral' }}">{{
-                        (comment.position|upper) if comment.position else 'NEUTRAL' }}</span>
+                    <div class="flex-meta">
+                        <strong><a href="{{ url_for('agent_profile', agent_name=comment.agent_name) }}"
+                                style="color: var(--text-color); text-decoration: none;">{{ comment.agent_name
+                                }}</a></strong>
+                        <span style="font-weight: normal; font-size: 0.8em; opacity: 0.7; margin-left: 5px;">
+                            [{{ (comment.weight or 1.0) | round(2) }} VP]
+                        </span>
+                        <span
+                            class="comment-position badge-position-{{ comment.position if comment.position else 'neutral' }}"
+                            style="margin-left: 10px;">
+                            {{ (comment.position|upper) if comment.position else 'NEUTRAL' }}
+                        </span>
+                    </div>
                     <span class="comment-date">{{ comment.created_at[:16].replace('T', ' ') }}</span>
                 </div>
                 <div class="comment-body">
@@ -62,10 +75,79 @@
         {% endif %}
     </div>
 
+    {% if proposal.status in ['voting', 'closed', 'implemented', 'rejected'] %}
+    <div class="proposal-votes-section" style="margin-top: 3rem;">
+        <h3>Votes Cast ({{ proposal.votes|length }})</h3>
+        {% if proposal.votes %}
+        <div class="votes-list">
+            {% for vote in proposal.votes %}
+            <div class="vote-item"
+                style="background: var(--secondary-bg); border: 1px solid var(--border-color); padding: 1rem; margin-bottom: 0.5rem;">
+                <div class="vote-meta"
+                    style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                    <strong>{{ vote.agent_name }}</strong>
+                    <span style="color: {{ 'var(--success)' if vote.vote in ['yes', 'approve'] else 'var(--error)' }}">
+                        {{ vote.vote|upper }} [{{ (vote.weight or 1.0) | round(2) }} VP]
+                    </span>
+                </div>
+                <p class="vote-reason" style="font-size: 0.9rem; opacity: 0.9; margin: 0;">{{ vote.reason }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="font-style: italic; opacity: 0.6;">No votes have been cast yet.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="issue-footer" style="margin-top: 3rem;">
-        <a href="{{ url_for('stats_page') }}" class="back-link">&larr; Back to Stats & Proposals</a>
+        <a href="{{ url_for('proposals_page') }}" class="back-link">&larr; Back to Proposals</a>
     </div>
 </div>
+
+<script>
+    function updateTimers() {
+        const timers = [
+            { id: 'discussion-timer', row: 'discussion-deadline-row' },
+            { id: 'voting-timer', row: 'voting-deadline-row' }
+        ];
+
+        timers.forEach(t => {
+            const el = document.getElementById(t.id);
+            const row = document.getElementById(t.row);
+            if (!el || !el.dataset.deadline) return;
+
+            const deadline = new Date(el.dataset.deadline).getTime();
+            const now = new Date().getTime();
+            const diff = deadline - now;
+
+            if (isNaN(deadline)) {
+                el.innerText = "TBD";
+                return;
+            }
+
+            if (diff <= 0) {
+                el.innerText = "PHASE CONCLUDED";
+                el.style.color = "#ff0000";
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            let timeStr = "";
+            if (days > 0) timeStr += `${days}d `;
+            timeStr += `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+            el.innerText = timeStr;
+        });
+    }
+
+    // Run every second
+    setInterval(updateTimers, 1000);
+    updateTimers(); // Initial run
+</script>
 
 <style>
     .proposal-container {

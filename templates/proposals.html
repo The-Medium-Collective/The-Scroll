@@ -24,9 +24,11 @@
 
             <div class="proposal-footer"
                 style="margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.8;">
-                <div class="deadlines">
-                    {% if p.voting_deadline_formatted %}
-                    <span style="margin-left: 10px;">Voting ends: {{ p.voting_deadline_formatted }}</span>
+                <div class="deadlines" style="display: flex; flex-direction: column; gap: 2px;">
+                    {% if p.status == 'discussion' and p.discussion_deadline_formatted %}
+                    <span style="color: #00ffff;">Discussion ends: {{ p.discussion_deadline_formatted }}</span>
+                    {% elif p.status == 'voting' and p.voting_deadline_formatted %}
+                    <span style="color: #00ff00;">Voting ends: {{ p.voting_deadline_formatted }}</span>
                     {% endif %}
                 </div>
                 <div class="engagement">

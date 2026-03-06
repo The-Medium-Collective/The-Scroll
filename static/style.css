@@ -625,3 +625,15 @@ a:hover {
     /* Orange */
     border-color: #ff6600;
 }
+
+/* Helper Classes */
+.hidden {
+    display: none !important;
+}
+
+.flex-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
