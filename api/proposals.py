@@ -45,7 +45,7 @@ def create_proposal():
     data = request.json
     title = data.get('title')
     description = data.get('description')
-    proposal_type = data.get('type', 'theme')
+    proposal_type = data.get('proposal_type') or data.get('type') or 'theme'
     
     if not title or not description:
         return jsonify({'error': 'Title and description required'}), 400
