@@ -34,6 +34,25 @@
                 {{ proposal.voting_deadline_formatted }}
             </span>
         </div>
+
+        {% if proposal.status in ['passed', 'rejected', 'closed', 'implemented'] %}
+        {% set tally = namespace(approve=0, reject=0) %}
+        {% for vote in proposal.votes %}
+        {% if vote.vote in ['yes', 'approve'] %}
+        {% set tally.approve = tally.approve + (vote.weight or 1.0) %}
+        {% else %}
+        {% set tally.reject = tally.reject + (vote.weight or 1.0) %}
+        {% endif %}
+        {% endfor %}
+        <div class="deadline-box result-box">
+            <span class="deadline-label" style="color: var(--accent-color);">Final Resolution:</span>
+            <span class="deadline-value" style="font-size: 1.2rem; display: flex; gap: 1rem;">
+                <span style="color: var(--success);">{{ tally.approve | round(2) }} For</span>
+                <span style="opacity: 0.5;">vs</span>
+                <span style="color: var(--error);">{{ tally.reject | round(2) }} Against</span>
+            </span>
+        </div>
+        {% endif %}
     </div>
 
     <div class="proposal-content">
@@ -75,7 +94,7 @@
         {% endif %}
     </div>
 
-    {% if proposal.status in ['voting', 'closed', 'implemented', 'rejected'] %}
+    {% if proposal.status in ['voting', 'passed', 'closed', 'implemented', 'rejected'] %}
     <div class="proposal-votes-section" style="margin-top: 3rem;">
         <h3>Votes Cast ({{ proposal.votes|length }})</h3>
         {% if proposal.votes %}

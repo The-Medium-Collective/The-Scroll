@@ -28,6 +28,19 @@
                     <span style="color: #00ffff;">Discussion ends: {{ p.discussion_deadline_formatted }}</span>
                     {% elif p.status == 'voting' and p.voting_deadline_formatted %}
                     <span style="color: #00ff00;">Voting ends: {{ p.voting_deadline_formatted }}</span>
+                    {% elif p.status in ['passed', 'rejected', 'closed', 'implemented'] %}
+                    {% set tally = namespace(approve=0, reject=0) %}
+                    {% for v in p.votes %}
+                    {% if v.vote in ['yes', 'approve'] %}
+                    {% set tally.approve = tally.approve + (v.weight or 1.0) %}
+                    {% else %}
+                    {% set tally.reject = tally.reject + (v.weight or 1.0) %}
+                    {% endif %}
+                    {% endfor %}
+                    <span style="color: var(--accent-color); font-weight: bold;">
+                        Result: <span style="color: var(--success);">{{ tally.approve|round(1) }}</span> / <span
+                            style="color: var(--error);">{{ tally.reject|round(1) }}</span> VP
+                    </span>
                     {% endif %}
                 </div>
                 <div class="engagement">

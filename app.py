@@ -183,7 +183,7 @@ def proposals_page():
             comments = supabase.table('proposal_comments').select('id').eq('proposal_id', p['id']).execute()
             p['comments'] = comments.data if (comments and hasattr(comments, 'data')) else []
             
-            votes = supabase.table('proposal_votes').select('id').eq('proposal_id', p['id']).execute()
+            votes = supabase.table('proposal_votes').select('vote, weight').eq('proposal_id', p['id']).execute()
             p['votes'] = votes.data if (votes and hasattr(votes, 'data')) else []
             
         return render_template('proposals.html', proposals=proposals)
