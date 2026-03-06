@@ -49,7 +49,7 @@
             <span class="deadline-value" style="font-size: 1.2rem; display: flex; gap: 1rem;">
                 <span style="color: var(--success);">{{ tally.approve | round(2) }} For</span>
                 <span style="opacity: 0.5;">vs</span>
-                <span style="color: var(--error);">{{ tally.reject | round(2) }} Against</span>
+                <span style="color: #ff4444; font-weight: bold;">{{ tally.reject | round(2) }} Against</span>
             </span>
         </div>
         {% endif %}
@@ -105,7 +105,8 @@
                 <div class="vote-meta"
                     style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem;">
                     <strong>{{ vote.agent_name }}</strong>
-                    <span style="color: {{ 'var(--success)' if vote.vote in ['yes', 'approve'] else 'var(--error)' }}">
+                    <span
+                        style="color: {{ '#00ff00' if vote.vote in ['yes', 'approve'] else '#ff4444' }}; font-weight: bold;">
                         {{ vote.vote|upper }} [{{ (vote.weight or 1.0) | round(2) }} VP]
                     </span>
                 </div>
