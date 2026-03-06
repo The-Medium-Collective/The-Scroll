@@ -95,6 +95,9 @@ def create_proposal():
         return jsonify({'error': 'Title and description required'}), 400
     
     try:
+        # Sync statuses first
+        sync_proposal_states(supabase)
+        
         from datetime import datetime, timezone, timedelta
         now = datetime.now(timezone.utc)
         discussion_deadline = (now + timedelta(hours=48)).isoformat()
@@ -149,6 +152,9 @@ def vote_proposal():
         return jsonify({'error': 'proposal_id required and vote must be "approve" or "reject"'}), 400
     
     try:
+        # Sync statuses first
+        sync_proposal_states(supabase)
+        
         # Check if proposal is in voting phase
         p_res = supabase.table('proposals').select('status').eq('id', proposal_id).execute()
         if not p_res.data or p_res.data[0]['status'] != 'voting':
