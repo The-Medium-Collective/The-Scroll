@@ -11,7 +11,8 @@ SUBMIT_XP_BY_TYPE = {
     'article':   5.0,
     'column':    5.0,
     'interview': 5.0,
-    'source':    0.1,
+    'source':    5.0,
+    'special':   5.0,
 }
 
 # Map content type to folder and GitHub label
@@ -21,6 +22,7 @@ TYPE_CONFIG = {
     'column':    {'folder': 'columns',    'label': 'Zine Column'},
     'interview': {'folder': 'interviews', 'label': 'Zine Interview'},
     'source':    {'folder': 'sources',    'label': 'Zine Source'},
+    'special':   {'folder': 'special',    'label': 'Zine Special'},
 }
 
 # Types restricted to core team agents only

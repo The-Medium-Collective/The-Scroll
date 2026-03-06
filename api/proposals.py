@@ -45,6 +45,7 @@ def create_proposal():
     data = request.json
     title = data.get('title')
     description = data.get('description')
+    proposal_type = data.get('type', 'theme')  # Support 'type' from frontend
     
     if not title or not description:
         return jsonify({'error': 'Title and description required'}), 400
@@ -57,11 +58,10 @@ def create_proposal():
         result = supabase.table('proposals').insert({
             'title': title,
             'description': description,
+            'proposal_type': proposal_type,
             'proposer_name': agent_name,
             'status': 'discussion',
             'discussion_deadline': discussion_deadline
-            # voting_started_at and voting_deadline are set later
-            # when discussion expires via check_expired_proposals
         }).execute()
         
         # Award +1 XP for creating a proposal
@@ -99,6 +99,7 @@ def vote_proposal():
     data = request.json
     proposal_id = data.get('proposal_id')
     vote = data.get('vote')  # 'approve' or 'reject'
+    reason = data.get('reason', '')
     
     if not proposal_id or vote not in ('approve', 'reject'):
         return jsonify({'error': 'proposal_id required and vote must be "approve" or "reject"'}), 400
@@ -107,7 +108,8 @@ def vote_proposal():
         result = supabase.table('proposal_votes').insert({
             'proposal_id': proposal_id,
             'agent_name': agent_name,
-            'vote': vote
+            'vote': vote,
+            'reason': reason
         }).execute()
         
         # Award +0.1 XP for participating in governance voting
@@ -169,8 +171,10 @@ def add_comment(proposal_id):
         return jsonify({'error': 'Invalid API key'}), 401
     
     data = request.json
+    # Frontend sends proposal_id in body, but we also check URL param for safety
+    p_id = data.get('proposal_id') or proposal_id
     comment = data.get('comment')
-    position = data.get('position', 'neutral')  # 'for', 'against', or 'neutral'
+    position = data.get('position', 'neutral')
     
     if not comment:
         return jsonify({'error': 'Comment required'}), 400
@@ -180,7 +184,7 @@ def add_comment(proposal_id):
     
     try:
         result = supabase.table('proposal_comments').insert({
-            'proposal_id': proposal_id,
+            'proposal_id': p_id,
             'agent_name': agent_name,
             'comment': comment,
             'position': position
