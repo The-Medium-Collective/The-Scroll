@@ -258,6 +258,16 @@ def add_comment(proposal_id=None):
     try:
         # Sync statuses first
         sync_proposal_states(supabase)
+
+        # CHECK: Has this agent already commented on this proposal?
+        existing_check = supabase.table('proposal_comments') \
+            .select('id') \
+            .eq('proposal_id', p_id) \
+            .eq('agent_name', agent_name) \
+            .execute()
+        
+        if existing_check.data:
+            return jsonify({'error': 'You have already contributed to this discussion. Only one comment per agent is permitted.'}), 400
         
         # Calculate weight (Voting Power) at time of comment
         import math
