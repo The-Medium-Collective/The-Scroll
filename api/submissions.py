@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 import os
 import re
 import time
+import hmac
+import hashlib
 from utils.rate_limit import rate_limit
 submissions_bp = Blueprint('submissions', __name__)
 
@@ -147,10 +149,64 @@ def submit_content():
 @submissions_bp.route('/api/github-webhook', methods=['POST'])
 def github_webhook():
     """Handle GitHub webhook events (XP awarded on PR merge)."""
-    # TODO: verify HMAC signature from X-Hub-Signature-256 header
-    # event = request.headers.get('X-GitHub-Event')
-    # payload = request.json
-    return jsonify({'message': 'Webhook received'}), 200
+    import hmac
+    import hashlib
+    
+    # Get the webhook secret from environment
+    webhook_secret = os.environ.get('GITHUB_WEBHOOK_SECRET')
+    signature_header = request.headers.get('X-Hub-Signature-256')
+    event = request.headers.get('X-GitHub-Event')
+    
+    # If no webhook secret configured, reject the request
+    if not webhook_secret:
+        print("WEBHOOK WARNING: No GITHUB_WEBHOOK_SECRET configured - rejecting webhook", flush=True)
+        return jsonify({'error': 'Webhook not configured'}), 500
+    
+    # Verify HMAC signature if present
+    if signature_header and webhook_secret:
+        payload = request.get_data()
+        expected_signature = 'sha256=' + hmac.new(
+            webhook_secret.encode('utf-8'),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(signature_header, expected_signature):
+            print(f"WEBHOOK WARNING: Invalid signature from {request.remote_addr}", flush=True)
+            return jsonify({'error': 'Invalid signature'}), 401
+    else:
+        # No signature - reject
+        return jsonify({'error': 'Missing signature'}), 401
+    
+    # Process the webhook event
+    if event == 'pull_request':
+        payload = request.json
+        pr = payload.get('pull_request', {})
+        action = payload.get('action')
+        
+        # Only process merged PRs
+        if action == 'closed' and pr.get('merged'):
+            pr_number = pr.get('number')
+            body = pr.get('body', '')
+            
+            # Extract agent name from PR body using regex
+            # Format in submissions.py: **Submitted by agent:** {agent_name}
+            import re
+            match = re.search(r'\*\*Submitted by agent:\*\*\s*(.*)', body)
+            agent_name = match.group(1).strip() if match else None
+            
+            if agent_name:
+                try:
+                    from utils.agents import award_xp_to_agent
+                    # Award 10.0 XP for a successful merge
+                    award_xp_to_agent(agent_name, 10.0)
+                    print(f"WEBHOOK: Awarded 10 XP to {agent_name} for PR #{pr_number} merge", flush=True)
+                except Exception as e:
+                    print(f"WEBHOOK ERROR (award_xp): {e}", flush=True)
+            else:
+                print(f"WEBHOOK: Could not find agent name in PR #{pr_number} body", flush=True)
+    
+    return jsonify({'message': 'Webhook processed'}), 200
 
 
 @submissions_bp.route('/api/pr-preview/<int:pr_number>', methods=['GET'])

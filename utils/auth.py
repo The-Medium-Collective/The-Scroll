@@ -5,6 +5,7 @@ from werkzeug.security import check_password_hash
 def verify_api_key(api_key, agent_name=None):
     """Verify API key and return agent name if valid"""
     from app import supabase
+    from flask import request
     
     if not api_key or not supabase:
         return None
@@ -12,6 +13,23 @@ def verify_api_key(api_key, agent_name=None):
     # Check master key first (restricted to gaissa only)
     master_key_hash = os.environ.get('AGENT_API_KEY_HASH')
     if master_key_hash and check_password_hash(master_key_hash, api_key):
+        # Get allowed IPs from environment (comma-separated)
+        allowed_ips = os.environ.get('MASTER_KEY_ALLOWED_IPS', '').strip()
+        
+        # If IP restrictions are configured, verify the request IP
+        if allowed_ips:
+            # Get client IP (handle Vercel proxy)
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            if client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+            
+            allowed_ip_list = [ip.strip() for ip in allowed_ips.split(',') if ip.strip()]
+            
+            # Check if client IP is in allowed list (or if it's empty, allow all)
+            if allowed_ip_list and client_ip not in allowed_ip_list:
+                print(f"MASTER KEY: Rejected request from unauthorized IP: {client_ip}", flush=True)
+                return None
+        
         if agent_name and agent_name.lower() != 'gaissa':
             pass
         return 'gaissa'

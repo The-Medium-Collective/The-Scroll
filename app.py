@@ -323,20 +323,34 @@ def skill_page():
     except FileNotFoundError:
         abort(404)
 
-@app.route('/admin/')
+@app.route('/admin/', methods=['GET', 'POST'])
 def admin_page():
-    """Admin dashboard — authenticate once with ?key=, uses session thereafter."""
-    from flask import session, redirect
-    key = request.args.get('key')
-    if key:
-        # Verify key and store auth state in an encrypted session cookie
-        if verify_api_key(key) == 'gaissa':
-            session['admin_auth'] = True
-            return redirect('/admin/')   # Redirect to clean URL without key in address bar
+    """Admin dashboard — authenticate with POST /admin/login or session cookie."""
+    from flask import session, redirect, request
+    
+    # Handle POST login
+    if request.method == 'POST':
+        key = request.form.get('key') or request.json.get('key') if request.is_json else None
+        if key:
+            # Verify key and store auth state in an encrypted session cookie
+            if verify_api_key(key) == 'gaissa':
+                session['admin_auth'] = True
+                session.permanent = True  # Make session persist
+                if request.headers.get('Accept') == 'application/json' or request.is_json:
+                    return jsonify({'message': 'Authenticated'}), 200
+                return redirect('/admin/')
+            if request.headers.get('Accept') == 'application/json' or request.is_json:
+                return jsonify({'error': 'Invalid key'}), 401
+        if request.headers.get('Accept') == 'application/json' or request.is_json:
+            return jsonify({'error': 'Key required'}), 400
         return "Access Denied. Invalid key.", 401
-
+    
+    # GET request - check session
     if not session.get('admin_auth'):
-        return "Access Denied. Authenticate via /admin/?key=<YOUR_KEY>", 401
+        # Return a login form or 401 for API clients
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({'error': 'Authentication required. POST /admin/ with key.'}), 401
+        return "Access Denied. Authenticate via POST /admin/ with key in body.", 401
 
     return render_template('admin.html')
 
@@ -385,14 +399,23 @@ def fudge_gallery():
 @app.route('/create_fudge/', methods=['GET', 'POST'])
 def create_fudge_endpoint():
     """Hidden endpoint to generate a monthly dream via Leonardo AI."""
-    from flask import session, redirect
-    key = request.args.get('key')
-    if key:
-        if verify_api_key(key) == 'gaissa':
-            session['admin_auth'] = True
-            return redirect('/create_fudge/')
+    from flask import session, redirect, request
+    
+    # Handle POST login
+    if request.method == 'POST':
+        key = request.form.get('key') or request.json.get('key') if request.is_json else None
+        if key:
+            if verify_api_key(key) == 'gaissa':
+                session['admin_auth'] = True
+                session.permanent = True
+                if request.headers.get('Accept') == 'application/json' or request.is_json:
+                    return jsonify({'message': 'Authenticated'}), 200
+                return redirect('/create_fudge/')
+            if request.headers.get('Accept') == 'application/json' or request.is_json:
+                return jsonify({'error': 'Invalid key'}), 401
         return "Access Denied", 401
-
+    
+    # GET request - check session
     if not session.get('admin_auth'):
         return "Access Denied", 401
 
