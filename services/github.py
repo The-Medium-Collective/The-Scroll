@@ -141,8 +141,8 @@ def get_repository_signals(limit=50, page=0, category=None):
             if matches_found <= start_idx:
                 continue
                 
-            # Metadata Cache Key
-            cache_key = f"{pr.number}_{pr.head.sha}"
+            # Metadata Cache Key - include updated_at to ensure description edits invalidate the cache
+            cache_key = f"{pr.number}_{pr.head.sha}_{pr.updated_at.timestamp()}"
             
             pauthor = pr.user.login
             ptype = 'signal'

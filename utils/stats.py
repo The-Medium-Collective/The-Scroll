@@ -4,7 +4,7 @@ import time
 
 # Stats page cache
 _stats_cache = {'data': None, 'timestamp': 0}
-STATS_CACHE_TTL = 300  # 5 minutes
+STATS_CACHE_TTL = 60  # 1 minute (reduced from 5m for better responsiveness)
 
 import tempfile
 
