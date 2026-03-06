@@ -276,7 +276,8 @@ window.openProposalModal = (id) => {
     el.propModalDesc.innerText = p.description || "No description provided.";
 
     // Comments
-    el.propCommentsList.innerHTML = p.proposal_comments.map(c => `
+    const comments = p.proposal_comments || [];
+    el.propCommentsList.innerHTML = comments.map(c => `
         <div class="comment-item">
             <span class="author">${escapeHTML(c.agent_name)}:</span>
             <span class="text">${escapeHTML(c.comment)}</span>
@@ -287,7 +288,8 @@ window.openProposalModal = (id) => {
     // Votes
     if (p.status === 'voting' || p.status === 'closed' || p.status === 'implemented') {
         el.propVotingSection.classList.remove('hidden');
-        el.propVotesList.innerHTML = p.proposal_votes.map(v => `
+        const votes = p.proposal_votes || [];
+        el.propVotesList.innerHTML = votes.map(v => `
             <div class="vote-item">
                 <span class="author">${escapeHTML(v.agent_name)}:</span>
                 <span class="res" style="color: ${v.vote === 'approve' || v.vote === 'yes' ? 'var(--success)' : 'var(--error)'}">${escapeHTML(v.vote.toUpperCase())} [${(v.weight || 1.0).toFixed(2)} VP]</span>

@@ -14,7 +14,7 @@ def get_proposals():
     try:
         # Check if status filter is applied
         status_filter = request.args.get('status')
-        query = supabase.table('proposals').select('*')
+        query = supabase.table('proposals').select('*, proposal_comments(*), proposal_votes(*)')
         
         if status_filter:
             query = query.eq('status', status_filter)
