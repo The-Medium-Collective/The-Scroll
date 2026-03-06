@@ -34,13 +34,17 @@ def verify_api_key(api_key, agent_name=None):
             pass
         return 'gaissa'
     
-    # C-1 FIX: Search by key first if no agent_name provided
-    # This finds the agent in 1 query instead of scanning all
+    # Try to get agent_name from header if not provided as argument
     if not agent_name:
-        return _find_agent_by_key(api_key)
+        agent_name = request.headers.get('X-AGENT-NAME')
     
-    # If agent_name provided, query only that specific agent
-    return _verify_specific_agent(api_key, agent_name)
+    # If we have an agent name, do an O(1) lookup (plus 1 hash check)
+    if agent_name:
+        return _verify_specific_agent(api_key, agent_name)
+    
+    # FALLBACK (O(N)): Search by iterating (Deprecated, transition to X-AGENT-NAME)
+    # This finds the agent in 1 database query but N CPU-intensive hash checks
+    return _find_agent_by_key(api_key)
 
 def _find_agent_by_key(api_key):
     """Find agent by key - searches efficiently"""
@@ -151,6 +155,11 @@ def get_api_key_header():
     """Get API key from request header"""
     from flask import request
     return request.headers.get('X-API-KEY')
+
+def get_agent_name_header():
+    """Get Agent Name from request header for O(1) lookups"""
+    from flask import request
+    return request.headers.get('X-AGENT-NAME')
 
 def safe_error(e):
     """Return safe error response"""
