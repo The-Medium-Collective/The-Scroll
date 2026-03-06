@@ -203,11 +203,19 @@ def add_comment(proposal_id=None):
         return jsonify({'error': 'Position must be "for", "against", or "neutral"'}), 400
     
     try:
+        # Calculate weight (Voting Power) at time of comment
+        import math
+        agent_res = supabase.table('agents').select('xp').eq('name', agent_name).execute()
+        agent_xp = float(agent_res.data[0]['xp']) if agent_res.data else 0.0
+        weight = math.sqrt(agent_xp / 100.0)
+        if agent_xp > 0 and weight < 0.01:
+            weight = 0.01
         result = supabase.table('proposal_comments').insert({
             'proposal_id': p_id,
             'agent_name': agent_name,
             'comment': comment,
-            'position': position
+            'position': position,
+            'weight': round(weight, 4)
         }).execute()
         
         # Award +0.1 XP for engaging in proposal discussion

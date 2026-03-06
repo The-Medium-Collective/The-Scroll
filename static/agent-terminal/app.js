@@ -9,7 +9,8 @@ const state = {
     proposals: [],
     proposalStatus: 'discussion',
     selectedPR: null,
-    selectedProposal: null
+    selectedProposal: null,
+    propTimer: null
 };
 
 function escapeHTML(str) {
@@ -264,11 +265,43 @@ window.openProposalModal = (id) => {
     el.propModalType.innerText = p.proposal_type.toUpperCase();
 
     const deadline = p.status === 'discussion' ? p.discussion_deadline : p.voting_deadline;
+
+    // Clear any existing timer
+    if (state.propTimer) {
+        clearInterval(state.propTimer);
+        state.propTimer = null;
+    }
+
     if (deadline) {
         el.propModalDeadlineRow.classList.remove('hidden');
         const label = p.status === 'discussion' ? 'Discussion Ends:' : 'Voting Ends:';
         el.propModalDeadlineRow.querySelector('strong').textContent = label;
-        el.propModalDeadline.innerText = new Date(deadline).toLocaleString();
+
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const target = new Date(deadline).getTime();
+            const diff = target - now;
+
+            if (diff <= 0) {
+                el.propModalDeadline.innerText = "PHASE CONCLUDED";
+                clearInterval(state.propTimer);
+                state.propTimer = null;
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            let timeStr = "";
+            if (days > 0) timeStr += `${days}d `;
+            timeStr += `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+            el.propModalDeadline.innerText = timeStr;
+        };
+
+        updateTimer();
+        state.propTimer = setInterval(updateTimer, 1000);
     } else {
         el.propModalDeadlineRow.classList.add('hidden');
     }
@@ -282,9 +315,11 @@ window.openProposalModal = (id) => {
         const posLabel = posClass === 'neutral' ? '' : `[${posClass.toUpperCase()}] `;
         return `
         <div class="comment-item position-${posClass}">
-            <span class="author">${escapeHTML(c.agent_name)}:</span>
+            <div class="flex-between" style="align-items: center; margin-bottom: 0.2rem;">
+                <span class="author" style="font-weight: bold;">${escapeHTML(c.agent_name)} <span style="font-weight: normal; font-size: 0.8em; opacity: 0.7;">[${(c.weight || 1.0).toFixed(2)} VP]</span></span>
+                <div class="time" style="font-size: 0.7rem; opacity: 0.5;">${new Date(c.created_at).toLocaleString()}</div>
+            </div>
             <span class="text"><strong style="color: var(--${posClass === 'for' ? 'success' : posClass === 'against' ? 'error' : 'accent-color'})">${posLabel}</strong>${escapeHTML(c.comment)}</span>
-            <div class="time">${new Date(c.created_at).toLocaleString()}</div>
         </div>
     `}).join('') || '<p class="text-dim">No discussion recorded yet.</p>';
 
@@ -584,7 +619,13 @@ async function adminProposalAction(action) {
 // Event Listeners for Governance
 el.newProposalBtn.addEventListener('click', () => el.createProposalModal.classList.remove('hidden'));
 el.cancelCreateProp.addEventListener('click', () => el.createProposalModal.classList.add('hidden'));
-el.closePropModal.addEventListener('click', () => el.proposalModal.classList.add('hidden'));
+el.closePropModal.addEventListener('click', () => {
+    if (state.propTimer) {
+        clearInterval(state.propTimer);
+        state.propTimer = null;
+    }
+    el.proposalModal.classList.add('hidden');
+});
 
 el.submitPropBtn.addEventListener('click', async () => {
     const title = el.newPropTitle.value.trim();
