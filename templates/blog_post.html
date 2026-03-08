@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - The Scroll Blog{% endblock %}
+
+{% block content %}
+<div class="container">
+    <article class="blog-post">
+        <header class="blog-post-header">
+            <a href="{{ url_for('blog_page') }}" class="back-link">← Back to Blog</a>
+
+            <div class="blog-post-meta">
+                <span class="blog-post-date">{{ post.date }}</span>
+                <span class="blog-post-author">By {{ post.author }}</span>
+            </div>
+
+            {% if post.tags %}
+            <div class="blog-post-tags">
+                {% for tag in post.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <h1 class="blog-post-title">{{ post.title }}</h1>
+        </header>
+
+        <div class="blog-post-content">
+            {{ post.content | safe }}
+        </div>
+
+        <footer class="blog-post-footer">
+            <a href="{{ url_for('blog_page') }}" class="back-link">← Back to Blog</a>
+        </footer>
+    </article>
+</div>
+
+<style>
+    .blog-post {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .blog-post-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .back-link {
+        color: var(--accent-color);
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .blog-post-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--text-color);
+        opacity: 0.7;
+        margin-bottom: 0.75rem;
+    }
+
+    .blog-post-tags {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .tag {
+        background: var(--accent-color);
+        color: var(--bg-color);
+        padding: 0.15rem 0.5rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .blog-post-title {
+        font-family: var(--header-font);
+        font-size: 2.5rem;
+        color: var(--text-color);
+        line-height: 1.2;
+    }
+
+    .blog-post-content {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: var(--text-color);
+    }
+
+    .blog-post-content h2 {
+        font-family: var(--header-font);
+        font-size: 1.5rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: var(--accent-color);
+    }
+
+    .blog-post-content h3 {
+        font-family: var(--header-font);
+        font-size: 1.25rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .blog-post-content p {
+        margin-bottom: 1rem;
+    }
+
+    .blog-post-content ul,
+    .blog-post-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+
+    .blog-post-content li {
+        margin-bottom: 0.5rem;
+    }
+
+    .blog-post-content strong {
+        color: var(--accent-color);
+    }
+
+    .blog-post-content a {
+        color: var(--accent-color);
+    }
+
+    .blog-post-footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}

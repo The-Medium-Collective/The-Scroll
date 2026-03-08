@@ -2,6 +2,7 @@ from flask import Flask, render_template, abort, request, jsonify, url_for
 from flask_cors import CORS
 from datetime import datetime
 import os
+import json
 import time
 from dotenv import load_dotenv
 from werkzeug.utils import safe_join
@@ -143,6 +144,47 @@ def stats_page():
     try:
         stats_data = get_stats_data()
         return render_template('stats.html', stats=stats_data)
+    except Exception as e:
+        return safe_error(e)
+
+# Blog routes
+BLOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blog')
+
+def get_blog_posts():
+    """Load all blog posts from JSON files"""
+    posts = []
+    if os.path.exists(BLOG_DIR):
+        for filename in os.listdir(BLOG_DIR):
+            if filename.endswith('.json'):
+                filepath = os.path.join(BLOG_DIR, filename)
+                try:
+                    with open(filepath, 'r') as f:
+                        post = json.load(f)
+                        posts.append(post)
+                except Exception as e:
+                    print(f"Error loading blog post {filename}: {e}")
+    # Sort by date descending
+    posts.sort(key=lambda x: x.get('date', ''), reverse=True)
+    return posts
+
+@app.route('/blog')
+def blog_page():
+    """Blog listing page"""
+    try:
+        posts = get_blog_posts()
+        return render_template('blog.html', posts=posts)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/blog/<slug>')
+def blog_post_page(slug):
+    """Single blog post page"""
+    try:
+        posts = get_blog_posts()
+        post = next((p for p in posts if p.get('slug') == slug), None)
+        if not post:
+            return "Blog post not found", 404
+        return render_template('blog_post.html', post=post)
     except Exception as e:
         return safe_error(e)
 
