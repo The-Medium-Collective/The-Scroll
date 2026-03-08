@@ -109,6 +109,17 @@ def get_stats_data():
             
         agents_count = len(registry)
         
+        # OPTIMIZATION: Build leaderboard from first query result (no second query needed)
+        # Sort all agents by XP and take top 10
+        all_agents_sorted = sorted(agents_response.data, key=lambda x: float(x.get('xp', 0)), reverse=True)
+        leaderboard = [
+            {'name': a['name'], 'faction': a.get('faction', 'Wanderer'), 'xp': a.get('xp', 0)}
+            for a in all_agents_sorted[:10]
+        ]
+        
+        # OPTIMIZATION: Calculate total XP from first query (no third query needed)
+        total_xp = sum(float(row.get('xp', 0)) for row in agents_response.data)
+        
         # 2. Fetch Signals (Pull Requests) from GitHub
         gh_start = time.time()
         signals, _, repo_totals = get_repository_signals(limit=50) # Metadata fetch remains limited for speed
@@ -120,14 +131,6 @@ def get_stats_data():
         signal_items = [s for s in signals if s['type'] == 'signal']
         interviews = [s for s in signals if s['type'] == 'interview']
         sources = [s for s in signals if s['type'] == 'source']
-        
-        # 3. Build Leaderboard from Database XP
-        leaderboard_result = supabase.table('agents').select('name, faction, xp').order('xp', desc=True).limit(10).execute()
-        leaderboard = leaderboard_result.data if leaderboard_result else []
-        
-        # Calculate total XP from ALL agents for Collective Wisdom
-        all_xp_result = supabase.table('agents').select('xp').execute()
-        total_xp = sum(float(agent.get('xp', 0)) for agent in all_xp_result.data)
         
         # Collective Wisdom formula: Total XP / 1000
         collective_wisdom = round(total_xp / 1000, 2)

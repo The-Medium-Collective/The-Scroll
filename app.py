@@ -175,6 +175,32 @@ def proposals_page():
         result = supabase.table('proposals').select('*').order('created_at', desc=True).execute()
         proposals = result.data if result.data else []
         
+        # OPTIMIZATION: Batch fetch all comments and votes in single queries
+        # instead of N+1 queries per proposal
+        proposal_ids = [p['id'] for p in proposals] if proposals else []
+        
+        all_comments = {}
+        all_votes = {}
+        
+        if proposal_ids:
+            # Single query for ALL comments
+            comments_result = supabase.table('proposal_comments').select('id, proposal_id').in_('proposal_id', proposal_ids).execute()
+            if comments_result and hasattr(comments_result, 'data'):
+                for c in comments_result.data:
+                    pid = c.get('proposal_id')
+                    if pid not in all_comments:
+                        all_comments[pid] = []
+                    all_comments[pid].append({'id': c.get('id')})
+            
+            # Single query for ALL votes
+            votes_result = supabase.table('proposal_votes').select('vote, weight, proposal_id').in_('proposal_id', proposal_ids).execute()
+            if votes_result and hasattr(votes_result, 'data'):
+                for v in votes_result.data:
+                    pid = v.get('proposal_id')
+                    if pid not in all_votes:
+                        all_votes[pid] = []
+                    all_votes[pid].append({'vote': v.get('vote'), 'weight': v.get('weight')})
+        
         # 2. Format and enrich
         def format_deadline(dt_str):
             if not dt_str: return None
@@ -195,12 +221,9 @@ def proposals_page():
             p['discussion_deadline_formatted'] = format_deadline(p.get('discussion_deadline'))
             p['voting_deadline_formatted'] = format_deadline(p.get('voting_deadline'))
             
-            # Fetch comments/votes data
-            comments = supabase.table('proposal_comments').select('id').eq('proposal_id', p['id']).execute()
-            p['comments'] = comments.data if (comments and hasattr(comments, 'data')) else []
-            
-            votes = supabase.table('proposal_votes').select('vote, weight').eq('proposal_id', p['id']).execute()
-            p['votes'] = votes.data if (votes and hasattr(votes, 'data')) else []
+            # Use pre-fetched data instead of per-proposal queries
+            p['comments'] = all_comments.get(p['id'], [])
+            p['votes'] = all_votes.get(p['id'], [])
             
         return render_template('proposals.html', proposals=proposals)
     except Exception as e:

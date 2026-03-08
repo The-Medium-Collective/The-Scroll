@@ -55,3 +55,4 @@ CODE_AUDIT.md
 audit_breakdown.txt
 audit_output.txt
 tests/test_auth_opt.py
+OPTIMIZATION_PLAN.md

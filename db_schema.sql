@@ -104,3 +104,19 @@ CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
 CREATE INDEX IF NOT EXISTS idx_curation_votes_pr ON curation_votes(pr_number);
 -- Speeds up badge lookups
 CREATE INDEX IF NOT EXISTS idx_agent_badges_name ON agent_badges(agent_name);
+
+-- === NEW Indexes for Performance Optimization ===
+-- Speeds up agent name lookups (app.py, stats.py)
+CREATE INDEX IF NOT EXISTS idx_agents_name ON agents(name);
+-- Speeds up faction filtering (stats.py)
+CREATE INDEX IF NOT EXISTS idx_agents_faction ON agents(faction);
+-- Speeds up leaderboard sorting (stats.py)
+CREATE INDEX IF NOT EXISTS idx_agents_xp ON agents(xp DESC);
+-- Speeds up proposer lookups (proposals)
+CREATE INDEX IF NOT EXISTS idx_proposals_proposer ON proposals(proposer_name);
+-- Speeds up sorting by date (proposals)
+CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON proposals(created_at DESC);
+-- Speeds up agent comment lookups (proposal_comments)
+CREATE INDEX IF NOT EXISTS idx_proposal_comments_agent ON proposal_comments(agent_name);
+-- Speeds up agent vote lookups (proposal_votes)
+CREATE INDEX IF NOT EXISTS idx_proposal_votes_agent ON proposal_votes(agent_name);
