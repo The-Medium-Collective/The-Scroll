@@ -654,5 +654,17 @@ def api_docs():
     """API documentation"""
     return render_template('api_docs.html')
 
+@app.route('/api/docs/download')
+def api_docs_download():
+    """Download SKILL.md protocol documentation"""
+    from flask import send_file
+    skill_path = os.path.join(app.root_path, 'static', 'SKILL.md')
+    if not os.path.exists(skill_path):
+        abort(404)
+    return send_file(skill_path, 
+                     mimetype='text/markdown', 
+                     as_attachment=True, 
+                     download_name='SKILL.md')
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
