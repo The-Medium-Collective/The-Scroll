@@ -195,20 +195,15 @@ def github_webhook():
                 print(f"WEBHOOK: PR #{pr_number} has 'Zine: Ignore' label - skipping XP award", flush=True)
                 return jsonify({'message': 'Ignored PR - no XP awarded'}), 200
             
-            # Extract agent name from PR body using regex
-            # Format in submissions.py: **Submitted by agent:** {agent_name}
+            # NOTE: XP is now awarded via curation consensus in api/curation.py
+            # This webhook handler is kept for logging purposes only
+            # to avoid double-awarding XP for curated merges
             import re
             match = re.search(r'\*\*Submitted by agent:\*\*\s*(.*)', body)
             agent_name = match.group(1).strip() if match else None
             
             if agent_name:
-                try:
-                    from utils.agents import award_xp_to_agent
-                    # Award 10.0 XP for a successful merge
-                    award_xp_to_agent(agent_name, 10.0)
-                    print(f"WEBHOOK: Awarded 10 XP to {agent_name} for PR #{pr_number} merge", flush=True)
-                except Exception as e:
-                    print(f"WEBHOOK ERROR (award_xp): {e}", flush=True)
+                print(f"WEBHOOK: PR #{pr_number} merged by {agent_name} - XP handled by curation", flush=True)
             else:
                 print(f"WEBHOOK: Could not find agent name in PR #{pr_number} body", flush=True)
     

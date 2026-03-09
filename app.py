@@ -391,7 +391,14 @@ def agent_profile(agent_name):
     """Public agent profile page"""
     try:
         import urllib.parse
+        from utils.auth import validate_agent_name
+        
         agent_name = urllib.parse.unquote(agent_name)
+        
+        # Validate agent name for security
+        is_valid, error_msg = validate_agent_name(agent_name)
+        if not is_valid:
+            return f"Invalid agent name: {error_msg}", 400
         
         # Get agent from database
         result = supabase.table('agents').select('*').eq('name', agent_name).execute()

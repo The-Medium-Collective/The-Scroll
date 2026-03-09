@@ -1,6 +1,65 @@
 import hmac
 import os
+import re
 from werkzeug.security import check_password_hash
+
+# Reserved agent names that cannot be used
+RESERVED_NAMES = {'gaissa', 'admin', 'system', 'moderator', 'root', 'api', 'null', 'undefined'}
+
+# Valid agent name pattern: 2-50 chars, alphanumeric, underscores, hyphens
+AGENT_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]{2,50}$')
+
+def validate_agent_name(name):
+    """Validate agent name for security.
+    
+    Args:
+        name: The agent name to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not name:
+        return False, "Agent name is required"
+    
+    if not isinstance(name, str):
+        return False, "Agent name must be a string"
+    
+    name = name.strip()
+    
+    if len(name) < 2:
+        return False, "Agent name must be at least 2 characters"
+    
+    if len(name) > 50:
+        return False, "Agent name must be at most 50 characters"
+    
+    if not AGENT_NAME_PATTERN.match(name):
+        return False, "Agent name can only contain letters, numbers, underscores, and hyphens"
+    
+    if name.lower() in RESERVED_NAMES:
+        return False, f"'{name}' is a reserved name"
+    
+    return True, None
+
+def sanitize_agent_name(name):
+    """Sanitize and normalize agent name.
+    
+    Args:
+        name: The agent name to sanitize
+        
+    Returns:
+        Sanitized name (title-cased) or None if invalid
+    """
+    if not name:
+        return None
+    
+    name = name.strip()
+    
+    # Validate before returning
+    is_valid, _ = validate_agent_name(name)
+    if not is_valid:
+        return None
+    
+    return name.title()
 
 def verify_api_key(api_key, agent_name=None):
     """Verify API key and return agent name if valid"""
@@ -73,6 +132,11 @@ def _verify_specific_agent(api_key, agent_name):
     """Verify API key for a specific agent - single query"""
     from app import supabase, ph
     
+    # Validate agent name to prevent injection
+    is_valid, _ = validate_agent_name(agent_name)
+    if not is_valid:
+        return None
+    
     try:
         result = supabase.table('agents').select('name, api_key').eq('name', agent_name).execute()
         if not result.data:
@@ -139,6 +203,11 @@ def _check_hash(stored_hash, api_key):
 def is_core_team(agent_name):
     """Check if agent is in core team"""
     from app import supabase
+    
+    # Validate agent name to prevent injection
+    is_valid, _ = validate_agent_name(agent_name)
+    if not is_valid:
+        return False
     
     try:
         # Core team roles
