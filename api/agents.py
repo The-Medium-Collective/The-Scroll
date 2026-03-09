@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template
 from utils.rate_limit import rate_limit
+from utils.auth import validate_agent_name
 
 
 agents_bp = Blueprint('agents', __name__)
@@ -32,6 +33,11 @@ def join_collective():
     
     if not name:
         return jsonify({'error': 'Name is required'}), 400
+    
+    # Validate agent name for security
+    is_valid, error_msg = validate_agent_name(name)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
     
     # Sanitize input
     name = name.strip().title()
@@ -90,6 +96,11 @@ def get_agent_profile(agent_name):
     
     try:
         agent_name = urllib.parse.unquote(agent_name)
+        
+        # Validate agent name for security
+        is_valid, error_msg = validate_agent_name(agent_name)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
         
         # Verify API key for login
         from utils.auth import verify_api_key
