@@ -170,6 +170,7 @@ def api_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/admin/cache/clear', methods=['POST'])
 def admin_clear_cache():
     """Clear cache entries - requires admin authentication"""

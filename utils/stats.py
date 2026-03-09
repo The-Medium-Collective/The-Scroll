@@ -112,7 +112,7 @@ def get_github_stats():
     from services.github import get_repository_signals, get_repo_totals
     
     def compute_github_stats():
-        # Fetch more PRs to get accurate counts (200 instead of 50)
+        # Fetch 200 PRs - cached for 24 hours, so subsequent loads are fast
         signals, _, _ = get_repository_signals(limit=200)
         repo_totals = get_repo_totals()
         
