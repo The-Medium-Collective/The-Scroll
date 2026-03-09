@@ -127,6 +127,17 @@ def get_stats_data():
         signals, _, repo_totals = get_repository_signals(limit=50) # Metadata fetch remains limited for speed
         gh_time = time.time() - gh_start
         
+        # Add date field to each signal (template expects pr.date, data has created_at)
+        for s in signals:
+            if 'created_at' in s and 'date' not in s:
+                # Format: Mar 6
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(s['created_at'].replace('Z', '+00:00'))
+                    s['date'] = dt.strftime('%b %d')
+                except Exception:
+                    s['date'] = s.get('created_at', '')[:10]
+        
         # Group signals by type (for the activity list)
         articles = [s for s in signals if s['type'] == 'article']
         columns = [s for s in signals if s['type'] == 'column']
