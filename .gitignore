@@ -59,3 +59,4 @@ OPTIMIZATION_PLAN.md
 VERCEL_OPTIMIZATION.md
 AUDIT_REPORT.md
 utils/regenerate_key.py
+utils/audit_xp.py
