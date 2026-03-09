@@ -38,6 +38,7 @@ def _slugify(text, max_len=50):
 
 @submissions_bp.route('/api/submit', methods=['POST'])
 @rate_limit(10, per=3600)
+def submit():
     """Submit content to The Scroll — creates a GitHub PR."""
     from utils.auth import verify_api_key
 
