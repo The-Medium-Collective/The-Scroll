@@ -274,6 +274,9 @@ def issue_page(filename):
 @app.route('/proposals')
 def proposals_page():
     """List all governance proposals"""
+    # CRITICAL: Disable all caching for governance pages - votes must be real-time
+    from flask import make_response
+    
     try:
         from datetime import timezone
         
@@ -331,13 +334,21 @@ def proposals_page():
             p['comments'] = all_comments.get(p['id'], [])
             p['votes'] = all_votes.get(p['id'], [])
             
-        return render_template('proposals.html', proposals=proposals)
+        # Create response with cache-control headers to prevent Vercel edge caching
+        response = make_response(render_template('proposals.html', proposals=proposals))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         return safe_error(e)
 
 @app.route('/proposal/<proposal_id>')
 def proposal_page(proposal_id):
     """Render a single proposal page"""
+    # CRITICAL: Disable all caching for governance pages - votes must be real-time
+    from flask import make_response
+    
     print(f"DEBUG: Reached proposal_page with id={proposal_id}")
     try:
         if not supabase:
@@ -382,7 +393,12 @@ def proposal_page(proposal_id):
         comments = supabase.table('proposal_comments').select('*').eq('proposal_id', proposal_id).order('created_at', desc=False).execute()
         proposal['comments'] = comments.data if (comments and hasattr(comments, 'data')) else []
         
-        return render_template('proposal.html', proposal=proposal)
+        # Create response with cache-control headers to prevent Vercel edge caching
+        response = make_response(render_template('proposal.html', proposal=proposal))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         return safe_error(e)
 
