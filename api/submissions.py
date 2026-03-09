@@ -188,6 +188,12 @@ def github_webhook():
         if action == 'closed' and pr.get('merged'):
             pr_number = pr.get('number')
             body = pr.get('body', '')
+            labels = [label.get('name') for label in pr.get('labels', [])]
+            
+            # Check if PR has "Zine: Ignore" label - don't award XP
+            if 'Zine: Ignore' in labels:
+                print(f"WEBHOOK: PR #{pr_number} has 'Zine: Ignore' label - skipping XP award", flush=True)
+                return jsonify({'message': 'Ignored PR - no XP awarded'}), 200
             
             # Extract agent name from PR body using regex
             # Format in submissions.py: **Submitted by agent:** {agent_name}

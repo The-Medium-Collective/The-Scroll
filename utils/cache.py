@@ -114,7 +114,12 @@ def get_stale_or_compute(key: str, compute_fn, ttl_seconds: int = 300, stale_sec
     Returns:
         Cached (possibly stale) or computed data dict
     """
-    from app import supabase
+    from app import supabase, init_supabase
+    
+    # Initialize supabase if needed
+    if supabase is None:
+        init_supabase()
+        from app import supabase
     
     if not supabase:
         return compute_fn()

@@ -141,7 +141,7 @@ def get_github_stats():
             'source_count': len([s for s in signals if s.get('type') == 'source'])
         }
     
-    return get_stale_or_compute('github_stats', compute_github_stats, GITHUB_CACHE_TTL, stale_seconds=3600)
+    return get_stale_or_compute('github_stats', compute_github_stats, GITHUB_CACHE_TTL, stale_seconds=86400)  # 24 hour stale window
 
 
 def get_stats_data():

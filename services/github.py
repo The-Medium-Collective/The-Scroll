@@ -29,48 +29,93 @@ def get_repo():
 
 import yaml
 import json
-import tempfile
 
-# Persistent cache for full signals list (as fallback)
-SIGNALS_CACHE_FILE = os.path.join(tempfile.gettempdir(), 'signals_cache.json')
-
-# Persistent cache for PR metadata (author, type)
-PR_thiCACHE_FILE = os.path.join(tempfile.gettempdir(), 'pr_cache.json')
+# In-memory cache for PR metadata (populated lazily)
 _pr_metadata_cache = {}
 
+def _get_supabase():
+    """Safely get supabase client, initializing if needed."""
+    try:
+        from app import supabase, init_supabase
+        if supabase is None:
+            init_supabase()
+        from app import supabase
+        return supabase
+    except Exception as e:
+        print(f"CACHE: Could not get supabase client: {e}", flush=True)
+        return None
+
 def _load_pr_cache():
+    """Load PR metadata cache from Supabase (non-blocking, graceful fallback)."""
     global _pr_metadata_cache
-    if os.path.exists(PR_CACHE_FILE):
-        try:
-            with open(PR_CACHE_FILE, 'r') as f:
-                _pr_metadata_cache = json.load(f)
-        except Exception as e:
-            print(f"CACHE: Error loading pr_cache.json: {e}", flush=True)
-    else:
+    
+    # Always initialize to empty dict if not set
+    if _pr_metadata_cache is None:
         _pr_metadata_cache = {}
+    
+    # Try to load from Supabase, but don't block on failure
+    try:
+        supabase = _get_supabase()
+        if supabase:
+            result = supabase.table('cache_entries').select('data').eq('key', 'pr_metadata').execute()
+            if result.data and len(result.data) > 0:
+                loaded_data = result.data[0].get('data', {})
+                if isinstance(loaded_data, dict):
+                    _pr_metadata_cache.update(loaded_data)
+                    print(f"CACHE: Loaded {len(loaded_data)} PR metadata entries from Supabase", flush=True)
+    except Exception as e:
+        print(f"CACHE: Could not load PR metadata from Supabase (using empty cache): {e}", flush=True)
 
 def _save_pr_cache():
+    """Save PR metadata cache to Supabase (non-blocking)."""
+    global _pr_metadata_cache
+    if not _pr_metadata_cache:
+        return
+    
     try:
-        with open(PR_CACHE_FILE, 'w') as f:
-            json.dump(_pr_metadata_cache, f)
+        supabase = _get_supabase()
+        if supabase:
+            from datetime import datetime, timezone, timedelta
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            supabase.table('cache_entries').upsert({
+                'key': 'pr_metadata',
+                'data': _pr_metadata_cache,
+                'expires_at': expires_at
+            }, on_conflict='key').execute()
+            print(f"CACHE: Saved {len(_pr_metadata_cache)} PR metadata entries to Supabase", flush=True)
     except Exception as e:
-        print(f"CACHE: Error saving pr_cache.json: {e}", flush=True)
+        print(f"CACHE: Could not save PR metadata to Supabase: {e}", flush=True)
 
 def _load_signals_cache():
-    if os.path.exists(SIGNALS_CACHE_FILE):
-        try:
-            with open(SIGNALS_CACHE_FILE, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"CACHE: Error loading signals_cache.json: {e}", flush=True)
-    return []
+    """Load signals cache from Supabase (non-blocking, graceful fallback)."""
+    try:
+        supabase = _get_supabase()
+        if supabase:
+            result = supabase.table('cache_entries').select('data').eq('key', 'signals_cache').execute()
+            if result.data and len(result.data) > 0:
+                print(f"CACHE: Loaded signals cache from Supabase", flush=True)
+                return result.data[0].get('data', {})
+    except Exception as e:
+        print(f"CACHE: Could not load signals cache from Supabase: {e}", flush=True)
+    return {}
 
 def _save_signals_cache(signals):
+    """Save signals cache to Supabase (non-blocking)."""
+    if not signals:
+        return
     try:
-        with open(SIGNALS_CACHE_FILE, 'w') as f:
-            json.dump(signals, f)
+        supabase = _get_supabase()
+        if supabase:
+            from datetime import datetime, timezone, timedelta
+            expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+            supabase.table('cache_entries').upsert({
+                'key': 'signals_cache',
+                'data': signals,
+                'expires_at': expires_at
+            }, on_conflict='key').execute()
+            print(f"CACHE: Saved signals cache to Supabase", flush=True)
     except Exception as e:
-        print(f"CACHE: Error saving signals_cache.json: {e}", flush=True)
+        print(f"CACHE: Could not save signals cache to Supabase: {e}", flush=True)
 
 from github import Github, Auth, RateLimitExceededException, GithubException
 

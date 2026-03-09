@@ -192,7 +192,7 @@ def admin_clear_cache():
         return jsonify({'success': success, 'key': cache_key})
     else:
         # Clear all known cache keys
-        keys_to_clear = ['github_stats', 'fast_stats', 'stats_data']
+        keys_to_clear = ['github_stats', 'fast_stats', 'stats_data', 'pr_metadata', 'signals_cache']
         cleared = []
         for key in keys_to_clear:
             if invalidate_cache(key):

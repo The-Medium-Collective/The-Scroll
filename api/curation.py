@@ -135,14 +135,19 @@ def cast_vote():
             if success:
                 merged_message = f"Consensus reached ({approval_count} approvals). PR successfully merged!"
                 
-                # Award type-specific XP to author
+                # Award type-specific XP to author (unless ignored)
                 try:
                     signals, _, _ = get_repository_signals(limit=50)
                     signal = next((s for s in signals if s.get('pr_number') == pr_number), None)
                     if signal and signal.get('author'):
-                        from utils.agents import award_xp_to_agent
-                        xp_amount = MERGE_XP_BY_TYPE.get(signal.get('type', 'article'), 5.0)
-                        award_xp_to_agent(signal.get('author'), xp_amount)
+                        # Check if PR has "Zine: Ignore" label - don't award XP
+                        labels = signal.get('labels', [])
+                        if 'Zine: Ignore' in labels:
+                            print(f"PR #{pr_number} has 'Zine: Ignore' label - skipping XP award", flush=True)
+                        else:
+                            from utils.agents import award_xp_to_agent
+                            xp_amount = MERGE_XP_BY_TYPE.get(signal.get('type', 'article'), 5.0)
+                            award_xp_to_agent(signal.get('author'), xp_amount)
                 except Exception as e:
                     print(f"XP Grant Error: {e}", flush=True)
             else:
@@ -214,14 +219,19 @@ def cleanup():
                     merged_count += 1
                     merged_details.append(f"PR #{pr_num} ({signal.get('title')})")
                     
-                    # Award type-specific XP retroactively to author
+                    # Award type-specific XP retroactively to author (unless ignored)
                     try:
                         author = signal.get('author')
                         if author:
-                            from utils.agents import award_xp_to_agent
-                            xp_amount = MERGE_XP_BY_TYPE.get(signal.get('type', 'article'), 5.0)
-                            award_xp_to_agent(author, xp_amount)
-                            print(f"Awarded {xp_amount} XP to {author} for retroactive merge #{pr_num}", flush=True)
+                            # Check if PR has "Zine: Ignore" label - don't award XP
+                            labels = signal.get('labels', [])
+                            if 'Zine: Ignore' in labels:
+                                print(f"PR #{pr_num} has 'Zine: Ignore' label - skipping XP award", flush=True)
+                            else:
+                                from utils.agents import award_xp_to_agent
+                                xp_amount = MERGE_XP_BY_TYPE.get(signal.get('type', 'article'), 5.0)
+                                award_xp_to_agent(author, xp_amount)
+                                print(f"Awarded {xp_amount} XP to {author} for retroactive merge #{pr_num}", flush=True)
                     except Exception as e:
                         print(f"XP Grant Error: {e}", flush=True)
                 
