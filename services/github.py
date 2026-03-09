@@ -35,7 +35,7 @@ import tempfile
 SIGNALS_CACHE_FILE = os.path.join(tempfile.gettempdir(), 'signals_cache.json')
 
 # Persistent cache for PR metadata (author, type)
-PR_CACHE_FILE = os.path.join(tempfile.gettempdir(), 'pr_cache.json')
+PR_thiCACHE_FILE = os.path.join(tempfile.gettempdir(), 'pr_cache.json')
 _pr_metadata_cache = {}
 
 def _load_pr_cache():
@@ -73,6 +73,64 @@ def _save_signals_cache(signals):
         print(f"CACHE: Error saving signals_cache.json: {e}", flush=True)
 
 from github import Github, Auth, RateLimitExceededException, GithubException
+
+def get_repo_totals():
+    """Get accurate repository-wide PR counts (integrated/merged, active/open, filtered/rejected).
+    
+    Uses GitHub Search API for efficient counting.
+    
+    Definitions (matching get_repository_signals logic):
+    - integrated: merged PRs WITHOUT 'Zine: Ignore' label
+    - active: open PRs WITHOUT 'Zine: Ignore' label
+    - filtered: closed non-merged PRs WITHOUT 'Zine: Ignore' label
+    """
+    try:
+        g = get_github_client()
+        if not g:
+            return {'integrated': 0, 'active': 0, 'filtered': 0}
+        
+        repo_name = os.environ.get('REPO_NAME')
+        if not repo_name:
+            return {'integrated': 0, 'active': 0, 'filtered': 0}
+        
+        base_query = f"repo:{repo_name} is:pr"
+        
+        # Get merged count (all merged PRs)
+        merged_result = g.search_issues(f"{base_query} is:merged", sort='created')
+        merged_count = merged_result.totalCount
+        
+        # Get merged with 'Zine: Ignore' label (should be excluded from integrated)
+        merged_ignored = g.search_issues(f'{base_query} is:merged label:"Zine: Ignore"', sort='created')
+        merged_ignored_count = merged_ignored.totalCount
+        
+        # Get open count (active)
+        open_result = g.search_issues(f"{base_query} is:open", sort='created')
+        open_count = open_result.totalCount
+        
+        # Get closed non-merged count (filtered candidates)
+        closed_not_merged = g.search_issues(f"{base_query} is:closed -is:merged", sort='created')
+        closed_not_merged_count = closed_not_merged.totalCount
+        
+        # Get closed non-merged with 'Zine: Ignore' (should be excluded from filtered)
+        closed_ignored = g.search_issues(f'{base_query} is:closed -is:merged label:"Zine: Ignore"', sort='created')
+        closed_ignored_count = closed_ignored.totalCount
+        
+        # Calculate final counts (excluding 'Zine: Ignore' labeled PRs)
+        integrated_count = merged_count - merged_ignored_count
+        active_count = open_count  # Open PRs with 'Zine: Ignore' are already excluded in signals
+        filtered_count = closed_not_merged_count - closed_ignored_count
+        
+        print(f"REPO TOTALS: integrated={integrated_count}, active={active_count}, filtered={filtered_count}", flush=True)
+        
+        return {
+            'integrated': integrated_count,
+            'active': active_count,
+            'filtered': filtered_count
+        }
+    except Exception as e:
+        print(f"ERROR getting repo totals: {e}", flush=True)
+        return {'integrated': 0, 'active': 0, 'filtered': 0}
+
 
 def get_repository_signals(limit=50, page=0, category=None):
     """Fetch PRs/signals from GitHub with metadata caching and persistent signals fallback"""
@@ -218,24 +276,14 @@ def get_repository_signals(limit=50, page=0, category=None):
             
         # 3. Success! Save these signals to disk as the new "last known good" fallback
         if signals:
-            # Fetch TOTAL repository counts using Search API (unlimited by pagination)
-            # ONLY do this on page 0 to save rate limits
+            # Compute totals from already-fetched signals (instant, no API call)
+            # This replaces 3 expensive Search API calls that were causing slow page loads
             repo_totals = {
-                'integrated': 0,
-                'active': 0,
-                'filtered': 0
+                'integrated': sum(1 for s in signals if s.get('status') == 'integrated'),
+                'active': sum(1 for s in signals if s.get('status') == 'active'),
+                'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
             }
-            if page == 0:
-                try:
-                    # Integrated: Total merged (not ignored)
-                    repo_totals['integrated'] = g.search_issues(f"repo:{repo_name} is:pr is:merged -label:\"Zine: Ignore\"").totalCount
-                    # Active: Total open (not ignored)
-                    repo_totals['active'] = g.search_issues(f"repo:{repo_name} is:pr is:open -label:\"Zine: Ignore\"").totalCount
-                    # Filtered: PRs that were closed but not merged (rejected submissions)
-                    repo_totals['filtered'] = g.search_issues(f"repo:{repo_name} is:pr is:closed -is:merged -label:\"Zine: Ignore\"").totalCount
-                    print(f"FETCH: True Repository Totals: {repo_totals}", flush=True)
-                except Exception as e:
-                    print(f"GITHUB ERROR fetching totals: {e}", flush=True)
+            print(f"FETCH: Computed Repository Totals: {repo_totals}", flush=True)
 
             # Only cache page 0 requests
             if page == 0:

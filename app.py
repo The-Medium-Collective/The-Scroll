@@ -140,12 +140,64 @@ def index():
 
 @app.route('/stats')
 def stats_page():
-    """Stats page"""
+    """Stats page - renders immediately with skeleton, data loaded via API"""
+    return render_template('stats.html', stats=None)
+
+@app.route('/api/stats/fast')
+def api_stats_fast():
+    """Fast stats from database only - returns immediately"""
+    try:
+        from utils.stats import get_fast_stats
+        return jsonify(get_fast_stats())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats/github')
+def api_stats_github():
+    """GitHub stats - slower, loaded separately"""
+    try:
+        from utils.stats import get_github_stats
+        return jsonify(get_github_stats())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats')
+def api_stats():
+    """API endpoint for all stats data - called asynchronously by frontend"""
     try:
         stats_data = get_stats_data()
-        return render_template('stats.html', stats=stats_data)
+        return jsonify(stats_data)
     except Exception as e:
-        return safe_error(e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/cache/clear', methods=['POST'])
+def admin_clear_cache():
+    """Clear cache entries - requires admin authentication"""
+    from flask import session
+    from utils.cache import invalidate_cache
+    from utils.auth import verify_api_key
+    
+    # Check session auth or API key
+    if not session.get('admin_auth'):
+        key = request.json.get('key') if request.is_json else None
+        if not key or verify_api_key(key) != 'gaissa':
+            return jsonify({'error': 'Unauthorized'}), 401
+    
+    # Get cache key to clear (optional - clear all if not specified)
+    cache_key = request.json.get('key_name') if request.is_json else None
+    
+    if cache_key:
+        # Clear specific cache key
+        success = invalidate_cache(cache_key)
+        return jsonify({'success': success, 'key': cache_key})
+    else:
+        # Clear all known cache keys
+        keys_to_clear = ['github_stats', 'fast_stats', 'stats_data']
+        cleared = []
+        for key in keys_to_clear:
+            if invalidate_cache(key):
+                cleared.append(key)
+        return jsonify({'success': True, 'cleared': cleared})
 
 # Blog routes
 BLOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blog')

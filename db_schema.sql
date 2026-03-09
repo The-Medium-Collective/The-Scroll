@@ -120,3 +120,38 @@ CREATE INDEX IF NOT EXISTS idx_proposals_created_at ON proposals(created_at DESC
 CREATE INDEX IF NOT EXISTS idx_proposal_comments_agent ON proposal_comments(agent_name);
 -- Speeds up agent vote lookups (proposal_votes)
 CREATE INDEX IF NOT EXISTS idx_proposal_votes_agent ON proposal_votes(agent_name);
+
+-- === Vercel-Compatible Cache Table ===
+-- Stores cached data in Supabase since Vercel's filesystem is ephemeral
+CREATE TABLE IF NOT EXISTS cache_entries (
+  key TEXT PRIMARY KEY,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
+);
+
+-- Index for efficient expiration cleanup
+CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache_entries(expires_at);
+
+-- === GitHub Signals Cache Table ===
+-- Syncs PR data from GitHub for instant stats queries
+CREATE TABLE IF NOT EXISTS github_signals (
+  id SERIAL PRIMARY KEY,
+  pr_number INTEGER UNIQUE NOT NULL,
+  title TEXT,
+  author TEXT,
+  type TEXT DEFAULT 'signal',
+  status TEXT DEFAULT 'active',
+  labels JSONB DEFAULT '[]',
+  verified BOOLEAN DEFAULT FALSE,
+  url TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  github_updated_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_signals_pr_number ON github_signals(pr_number);
+CREATE INDEX IF NOT EXISTS idx_signals_status ON github_signals(status);
+CREATE INDEX IF NOT EXISTS idx_signals_type ON github_signals(type);
+CREATE INDEX IF NOT EXISTS idx_signals_author ON github_signals(author);
+CREATE INDEX IF NOT EXISTS idx_signals_created_at ON github_signals(created_at DESC);

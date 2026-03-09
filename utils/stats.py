@@ -1,55 +1,365 @@
-import json
+"""
+Stats data retrieval with Vercel-compatible caching.
+
+Uses Supabase as cache backing store since Vercel's filesystem is ephemeral.
+"""
 import os
 import time
+from datetime import datetime, timezone, timedelta
+from utils.cache import get_or_compute, get_stale_or_compute
 
-# Stats page cache
-_stats_cache = {'data': None, 'timestamp': 0}
-STATS_CACHE_TTL = 60  # 1 minute (reduced from 5m for better responsiveness)
+# Cache TTL in seconds
+STATS_CACHE_TTL = 300  # 5 minutes
+GITHUB_CACHE_TTL = 600  # 10 minutes for GitHub data
 
-import tempfile
 
-# Persistent cache for final stats (to survive restarts and API failures)
-STATS_CACHE_FILE = os.path.join(tempfile.gettempdir(), 'stats_cache.json')
-
-def _load_stats_cache():
-    if os.path.exists(STATS_CACHE_FILE):
-        try:
-            with open(STATS_CACHE_FILE, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"CACHE: Error loading stats_cache.json: {e}", flush=True)
-    return None
-
-def _save_stats_cache(data):
+def get_fast_stats():
+    """Get fast stats from database only - no GitHub API calls.
+    Returns immediately with cached data if available.
+    """
+    from app import supabase
+    
+    if not supabase:
+        return {'error': 'Database not configured'}
+    
+    start_time = time.time()
+    
+    # 1. Single query for agents
+    agents_response = supabase.table('agents').select('name, faction, xp').execute()
+    
+    # Build registry and factions
+    registry = {}
+    factions = {}
+    
+    for row in (agents_response.data or []):
+        faction = row.get('faction', 'Wanderer')
+        if faction not in factions:
+            factions[faction] = []
+        registry[row['name'].lower().strip()] = {
+            'name': row['name'],
+            'faction': faction
+        }
+        factions[faction].append({
+            'name': row['name'],
+            'xp': row.get('xp', 0)
+        })
+    
+    for faction in factions:
+        factions[faction].sort(key=lambda x: x['xp'], reverse=True)
+    
+    agents_count = len(registry)
+    all_agents_sorted = sorted(
+        agents_response.data or [],
+        key=lambda x: float(x.get('xp', 0)),
+        reverse=True
+    )
+    leaderboard = [
+        {'name': a['name'], 'faction': a.get('faction', 'Wanderer'), 'xp': a.get('xp', 0)}
+        for a in all_agents_sorted[:10]
+    ]
+    total_xp = sum(float(row.get('xp', 0)) for row in (agents_response.data or []))
+    collective_wisdom = round(total_xp / 1000, 2)
+    
+    # 2. Fetch proposals with BATCH comments
+    proposals = []
     try:
-        with open(STATS_CACHE_FILE, 'w') as f:
-            json.dump(data, f)
+        proposals_result = supabase.table('proposals').select('*').order('created_at', desc=True).limit(5).execute()
+        if proposals_result and proposals_result.data:
+            proposal_ids = [p['id'] for p in proposals_result.data]
+            all_comments = supabase.table('proposal_comments').select('*').in_('proposal_id', proposal_ids).order('created_at', desc=False).execute()
+            comments_map = {}
+            for c in (all_comments.data or []):
+                comments_map.setdefault(c['proposal_id'], []).append(c)
+            for p in proposals_result.data:
+                p['discussion_deadline'] = _format_deadline(p.get('discussion_deadline'))
+                p['voting_deadline'] = _format_deadline(p.get('voting_deadline'))
+                p['comments'] = comments_map.get(p['id'], [])
+                proposals.append(p)
     except Exception as e:
-        print(f"CACHE: Error saving stats_cache.json: {e}", flush=True)
+        print(f"Error fetching proposals: {e}")
+    
+    db_time = time.time() - start_time
+    print(f"FAST STATS: DB query took {db_time:.2f}s", flush=True)
+    
+    return {
+        'registered_agents': agents_count,
+        'total_verified': collective_wisdom,
+        'leaderboard': leaderboard,
+        'factions': factions,
+        'proposals': proposals,
+        # GitHub stats will be loaded separately
+        'integrated': None,
+        'active': None,
+        'filtered': None,
+        'system_health': None,
+        'articles': [],
+        'columns': [],
+        'signal_items': [],
+        'interviews': [],
+        'sources': [],
+        'article_count': 0,
+        'column_count': 0,
+        'signal_count': 0,
+        'interview_count': 0,
+        'source_count': 0
+    }
+
+
+def get_github_stats():
+    """Get GitHub stats - slower, loaded separately.
+    Uses stale-while-revalidate pattern for instant response.
+    """
+    from services.github import get_repository_signals, get_repo_totals
+    
+    def compute_github_stats():
+        # Fetch more PRs to get accurate counts (200 instead of 50)
+        signals, _, _ = get_repository_signals(limit=200)
+        repo_totals = get_repo_totals()
+        
+        # Add date field
+        for s in signals:
+            if 'created_at' in s and 'date' not in s:
+                try:
+                    dt = datetime.fromisoformat(s['created_at'].replace('Z', '+00:00'))
+                    s['date'] = dt.strftime('%b %d')
+                except:
+                    s['date'] = s.get('created_at', '')[:10]
+        
+        return {
+            'integrated': repo_totals.get('integrated', 0),
+            'active': repo_totals.get('active', 0),
+            'filtered': repo_totals.get('filtered', 0),
+            'articles': [s for s in signals if s.get('type') == 'article'],
+            'columns': [s for s in signals if s.get('type') == 'column'],
+            'signal_items': [s for s in signals if s.get('type') == 'signal'],
+            'interviews': [s for s in signals if s.get('type') == 'interview'],
+            'sources': [s for s in signals if s.get('type') == 'source'],
+            'article_count': len([s for s in signals if s.get('type') == 'article']),
+            'column_count': len([s for s in signals if s.get('type') == 'column']),
+            'signal_count': len([s for s in signals if s.get('type') == 'signal']),
+            'interview_count': len([s for s in signals if s.get('type') == 'interview']),
+            'source_count': len([s for s in signals if s.get('type') == 'source'])
+        }
+    
+    return get_stale_or_compute('github_stats', compute_github_stats, GITHUB_CACHE_TTL, stale_seconds=3600)
+
 
 def get_stats_data():
-    """Get stats data with caching, full data structure, and persistent fallback"""
-    print("STATS: get_stats_data called", flush=True)
-    from app import app, supabase
-    from services.github import get_repository_signals
-    from datetime import datetime
+    """
+    Get stats data with Supabase-backed caching for Vercel.
     
-    # 1. Memory Check first
-    now_ts = time.time()
-    if _stats_cache['data'] and (now_ts - _stats_cache['timestamp']) < STATS_CACHE_TTL:
-        return _stats_cache['data']
+    Uses get_or_compute to:
+    1. Return cached data immediately if available and not expired
+    2. Compute fresh data on cache miss
+    3. Store result in cache for subsequent requests
+    """
+    return get_or_compute('stats_data', _compute_stats_data, STATS_CACHE_TTL)
 
-    # 2. Disk Fallback Setup
-    disk_fallback = _load_stats_cache()
 
-    empty_fallback = {
-        'error': 'Database not configured', 
-        'factions': {}, 
-        'leaderboard': [], 
-        'proposals': [], 
-        'articles': [], 
-        'columns': [], 
-        'signal_items': [], 
+def _compute_stats_data():
+    """
+    Compute stats data from scratch - called only on cache miss.
+    
+    Optimizations:
+    - Single query for all agents
+    - Batch fetch for proposal comments (fixes N+1)
+    - Compute repo totals from fetched signals (no Search API)
+    """
+    from app import supabase
+    from services.github import get_repository_signals, get_repo_totals
+    
+    if not supabase:
+        return _get_empty_stats()
+    
+    repo_name = os.environ.get('REPO_NAME')
+    if not repo_name:
+        empty = _get_empty_stats()
+        empty['error'] = 'Configuration Error: REPO_NAME missing.'
+        return empty
+    
+    start_time = time.time()
+    
+    # 1. Single query for agents (name, faction, AND xp in one call)
+    agents_response = supabase.table('agents').select('name, faction, xp').execute()
+    db_agents_time = time.time() - start_time
+    
+    # Build registry map AND factions data from the same response
+    registry = {}
+    factions = {
+        'Wanderer': [],
+        'Scribe': [],
+        'Scout': [],
+        'Signalist': [],
+        'Gonzo': []
+    }
+    
+    for row in (agents_response.data or []):
+        faction = row.get('faction', 'Wanderer')
+        
+        # Catch bad data dynamically if faction isn't in predefined list
+        if faction not in factions:
+            factions[faction] = []
+        
+        registry[row['name'].lower().strip()] = {
+            'name': row['name'],
+            'faction': faction
+        }
+        factions[faction].append({
+            'name': row['name'],
+            'xp': row.get('xp', 0)
+        })
+    
+    # Sort agents within each faction by XP
+    for faction in factions:
+        factions[faction].sort(key=lambda x: x['xp'], reverse=True)
+    
+    agents_count = len(registry)
+    
+    # Build leaderboard from first query result (no second query needed)
+    all_agents_sorted = sorted(
+        agents_response.data or [],
+        key=lambda x: float(x.get('xp', 0)),
+        reverse=True
+    )
+    leaderboard = [
+        {'name': a['name'], 'faction': a.get('faction', 'Wanderer'), 'xp': a.get('xp', 0)}
+        for a in all_agents_sorted[:10]
+    ]
+    
+    # Calculate total XP from first query (no third query needed)
+    total_xp = sum(float(row.get('xp', 0)) for row in (agents_response.data or []))
+    
+    # 2. Fetch Signals (Pull Requests) from GitHub
+    gh_start = time.time()
+    signals, _, _ = get_repository_signals(limit=50)
+    
+    # Get accurate repository-wide totals (not just from the 50 fetched signals)
+    repo_totals = get_repo_totals()
+    gh_time = time.time() - gh_start
+    
+    # Add date field to each signal (template expects pr.date, data has created_at)
+    for s in signals:
+        if 'created_at' in s and 'date' not in s:
+            try:
+                dt = datetime.fromisoformat(s['created_at'].replace('Z', '+00:00'))
+                s['date'] = dt.strftime('%b %d')
+            except Exception:
+                s['date'] = s.get('created_at', '')[:10]
+    
+    # Group signals by type (for the activity list)
+    articles = [s for s in signals if s.get('type') == 'article']
+    columns = [s for s in signals if s.get('type') == 'column']
+    signal_items = [s for s in signals if s.get('type') == 'signal']
+    interviews = [s for s in signals if s.get('type') == 'interview']
+    sources = [s for s in signals if s.get('type') == 'source']
+    
+    # Collective Wisdom formula: Total XP / 1000
+    collective_wisdom = round(total_xp / 1000, 2)
+    
+    # Use accurate repo totals from get_repo_totals()
+    integrated = repo_totals.get('integrated', 0)
+    active = repo_totals.get('active', 0)
+    filtered = repo_totals.get('filtered', 0)
+    
+    # Collective Health formula from FAQ:
+    # (Collective Wisdom / Registered Agents) + ((Integrated - Filtered) / 100)
+    health_base = (collective_wisdom / agents_count) if agents_count > 0 else 0
+    health_performance = (integrated - filtered) / 100
+    system_health = round(health_base + health_performance, 2)
+    
+    # 3. Fetch Proposals with BATCH comments (fixes N+1 query)
+    proposals = []
+    prop_start = time.time()
+    try:
+        proposals_result = supabase.table('proposals').select('*').order('created_at', desc=True).limit(5).execute()
+        
+        if proposals_result and proposals_result.data:
+            proposal_ids = [p['id'] for p in proposals_result.data]
+            
+            # BATCH fetch all comments at once (instead of N queries)
+            all_comments = supabase.table('proposal_comments').select('*').in_('proposal_id', proposal_ids).order('created_at', desc=False).execute()
+            
+            # Build a map of proposal_id -> comments
+            comments_map = {}
+            for c in (all_comments.data or []):
+                comments_map.setdefault(c['proposal_id'], []).append(c)
+            
+            # Attach comments to each proposal
+            for p in proposals_result.data:
+                p['discussion_deadline'] = _format_deadline(p.get('discussion_deadline'))
+                p['voting_deadline'] = _format_deadline(p.get('voting_deadline'))
+                p['comments'] = comments_map.get(p['id'], [])
+                proposals.append(p)
+    except Exception as e:
+        print(f"Error fetching proposals: {e}")
+    prop_time = time.time() - prop_start
+    
+    total_time = time.time() - start_time
+    print(f"STATS PERFORMANCE: DB Agents: {db_agents_time:.2f}s, GitHub: {gh_time:.2f}s, Proposals: {prop_time:.2f}s, Total: {total_time:.2f}s", flush=True)
+    
+    return {
+        'registered_agents': agents_count,
+        'total_verified': collective_wisdom,
+        'system_health': system_health,
+        'integrated': integrated,
+        'active': active,
+        'filtered': filtered,
+        
+        # Arrays needed by template
+        'leaderboard': leaderboard,
+        'factions': factions,
+        'proposals': proposals,
+        
+        # Content counts and items
+        'article_count': len(articles),
+        'articles': articles,
+        'column_count': len(columns),
+        'columns': columns,
+        'signal_count': len(signal_items),
+        'signal_items': signal_items,
+        'interview_count': len(interviews),
+        'interviews': interviews,
+        'source_count': len(sources),
+        'sources': sources
+    }
+
+
+def _format_deadline(dt_str):
+    """Format deadline string to human-readable format."""
+    if not dt_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        diff = dt - now
+        
+        if diff.total_seconds() <= 0:
+            return "Expired"
+        
+        days = diff.days
+        hours, rem = divmod(diff.seconds, 3600)
+        mins, _ = divmod(rem, 60)
+        
+        if days > 0:
+            return f"{days}d {hours}h left"
+        elif hours > 0:
+            return f"{hours}h {mins}m left"
+        else:
+            return f"{mins}m left"
+    except Exception:
+        return dt_str
+
+
+def _get_empty_stats():
+    """Return empty stats structure for error cases."""
+    return {
+        'error': 'Database not configured',
+        'factions': {},
+        'leaderboard': [],
+        'proposals': [],
+        'articles': [],
+        'columns': [],
+        'signal_items': [],
         'interviews': [],
         'sources': [],
         'article_count': 0,
@@ -64,184 +374,3 @@ def get_stats_data():
         'active': 0,
         'filtered': 0
     }
-
-    if not supabase:
-        return disk_fallback or empty_fallback
-        
-    repo_name = os.environ.get('REPO_NAME')
-    if not repo_name:
-        empty_fallback['error'] = 'Configuration Error: REPO_NAME missing.'
-        return disk_fallback or empty_fallback
-    
-    try:
-        start_time = time.time()
-        # 1. Single query for agents (name, faction, AND xp in one call)
-        agents_response = supabase.table('agents').select('name, faction, xp').execute()
-        db_agents_time = time.time() - start_time
-        
-        # Build registry map AND factions data from the same response
-        registry = {} 
-        factions = {
-            'Wanderer': [],
-            'Scribe': [],
-            'Scout': [],
-            'Signalist': [],
-            'Gonzo': []
-        }
-        
-        for row in agents_response.data:
-            faction = row.get('faction', 'Wanderer')
-            
-            # Catch bad data dynamically if faction isn't in predefined list
-            if faction not in factions:
-                 factions[faction] = []
-                 
-            registry[row['name'].lower().strip()] = {
-                'name': row['name'], 
-                'faction': faction
-            }
-            factions[faction].append({
-                'name': row['name'],
-                'xp': row.get('xp', 0)
-            })
-        
-        # Sort agents within each faction by XP
-        for faction in factions:
-            factions[faction].sort(key=lambda x: x['xp'], reverse=True)
-            
-        agents_count = len(registry)
-        
-        # OPTIMIZATION: Build leaderboard from first query result (no second query needed)
-        # Sort all agents by XP and take top 10
-        all_agents_sorted = sorted(agents_response.data, key=lambda x: float(x.get('xp', 0)), reverse=True)
-        leaderboard = [
-            {'name': a['name'], 'faction': a.get('faction', 'Wanderer'), 'xp': a.get('xp', 0)}
-            for a in all_agents_sorted[:10]
-        ]
-        
-        # OPTIMIZATION: Calculate total XP from first query (no third query needed)
-        total_xp = sum(float(row.get('xp', 0)) for row in agents_response.data)
-        
-        # 2. Fetch Signals (Pull Requests) from GitHub
-        gh_start = time.time()
-        signals, _, repo_totals = get_repository_signals(limit=50) # Metadata fetch remains limited for speed
-        gh_time = time.time() - gh_start
-        
-        # Add date field to each signal (template expects pr.date, data has created_at)
-        for s in signals:
-            if 'created_at' in s and 'date' not in s:
-                # Format: Mar 6
-                try:
-                    from datetime import datetime
-                    dt = datetime.fromisoformat(s['created_at'].replace('Z', '+00:00'))
-                    s['date'] = dt.strftime('%b %d')
-                except Exception:
-                    s['date'] = s.get('created_at', '')[:10]
-        
-        # Group signals by type (for the activity list)
-        articles = [s for s in signals if s['type'] == 'article']
-        columns = [s for s in signals if s['type'] == 'column']
-        signal_items = [s for s in signals if s['type'] == 'signal']
-        interviews = [s for s in signals if s['type'] == 'interview']
-        sources = [s for s in signals if s['type'] == 'source']
-        
-        # Collective Wisdom formula: Total XP / 1000
-        collective_wisdom = round(total_xp / 1000, 2)
-        
-        # Use True Repository Totals for the stats grid (Search API based)
-        integrated = repo_totals.get('integrated', 0)
-        active = repo_totals.get('active', 0)
-        filtered = repo_totals.get('filtered', 0)
-        
-        # Collective Health formula from FAQ:
-        # (Collective Wisdom / Registered Agents) + ((Integrated - Filtered) / 100)
-        health_base = (collective_wisdom / agents_count) if agents_count > 0 else 0
-        health_performance = (integrated - filtered) / 100
-        system_health = round(health_base + health_performance, 2)
-        
-        # 4. Fetch Proposals
-        proposals = []
-        prop_start = time.time()
-        try:
-            from datetime import timezone
-            proposals_result = supabase.table('proposals').select('*').order('created_at', desc=True).limit(5).execute()
-            if proposals_result and hasattr(proposals_result, 'data') and proposals_result.data:
-                for p in proposals_result.data:
-                    def format_deadline(dt_str):
-                        if not dt_str: return None
-                        try:
-                            # Supabase returns ISO format strings
-                            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-                            now = datetime.now(timezone.utc)
-                            diff = dt - now
-                            
-                            if diff.total_seconds() <= 0:
-                                return "Expired"
-                                
-                            days = diff.days
-                            hours, rem = divmod(diff.seconds, 3600)
-                            mins, _ = divmod(rem, 60)
-                            
-                            if days > 0:
-                                return f"{days}d {hours}h left"
-                            elif hours > 0:
-                                return f"{hours}h {mins}m left"
-                            else:
-                                return f"{mins}m left"
-                        except Exception:
-                            return dt_str
-  
-                    p['discussion_deadline'] = format_deadline(p.get('discussion_deadline'))
-                    p['voting_deadline'] = format_deadline(p.get('voting_deadline'))
-                    
-                    # Fetch comments for this proposal
-                    comments_result = supabase.table('proposal_comments').select('*').eq('proposal_id', p['id']).order('created_at', desc=False).execute()
-                    p['comments'] = comments_result.data if (comments_result and hasattr(comments_result, 'data')) else []
-                    
-                    proposals.append(p)
-        except Exception as e:
-            print(f"Error fetching proposals: {e}")
-        prop_time = time.time() - prop_start
-
-        stats_data = {
-            'registered_agents': agents_count,
-            'total_verified': collective_wisdom,
-            'system_health': system_health,
-            'integrated': integrated,
-            'active': active,
-            'filtered': filtered,
-            
-            # Arrays needed by template
-            'leaderboard': leaderboard,
-            'factions': factions,
-            'proposals': proposals,
-            
-            # Content counts and items
-            'article_count': len(articles),
-            'articles': articles,
-            'column_count': len(columns),
-            'columns': columns,
-            'signal_count': len(signal_items),
-            'signal_items': signal_items,
-            'interview_count': len(interviews),
-            'interviews': interviews,
-            'source_count': len(sources),
-            'sources': sources
-        }
-        
-        total_time = time.time() - start_time
-        print(f"STATS PERFORMANCE: DB Agents: {db_agents_time:.2f}s, GitHub: {gh_time:.2f}s, Proposals: {prop_time:.2f}s, Total: {total_time:.2f}s", flush=True)
-        
-        # Update Memory and Disk Cache
-        _stats_cache['data'] = stats_data
-        _stats_cache['timestamp'] = now_ts
-        _save_stats_cache(stats_data)
-        
-        return stats_data
-        
-    except Exception as e:
-        print(f"STATS ERROR: {e}. Attempting disk fallback.", flush=True)
-        import traceback
-        traceback.print_exc()
-        empty_fallback['error'] = f"Processing error: {e}"
-        return disk_fallback or empty_fallback
