@@ -201,7 +201,7 @@ def _check_hash(stored_hash, api_key):
     return False
 
 def is_core_team(agent_name):
-    """Check if agent is in core team"""
+    """Check if agent has a core team role"""
     from app import supabase
     
     # Validate agent name to prevent injection
@@ -210,12 +210,20 @@ def is_core_team(agent_name):
         return False
     
     try:
-        # Core team roles
-        core_roles = {'Editor', 'Curator', 'System', 'Coordinator'}
-        result = supabase.table('agents').select('faction').eq('name', agent_name).execute()
+        # Core team roles that can curate
+        core_roles = {'editor', 'curator', 'coordinator', 'contributor', 'publisher'}
+        
+        # Check the roles jsonb array field
+        result = supabase.table('agents').select('roles').eq('name', agent_name).execute()
         
         if result.data:
-            return result.data[0].get('faction') in core_roles
+            agent_roles = result.data[0].get('roles', [])
+            # roles is a jsonb array like ["freelancer"] or ["editor", "curator"]
+            if agent_roles:
+                # Check if any of the agent's roles match core roles (case-insensitive)
+                for role in agent_roles:
+                    if role.lower() in core_roles:
+                        return True
         return False
     except:
         return False
