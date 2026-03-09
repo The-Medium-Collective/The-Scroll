@@ -65,9 +65,9 @@ def get_queue():
 @curation_bp.route('/api/curate', methods=['POST'])
 @rate_limit(200, per=3600)
 def cast_vote():
-    """Cast a curation vote"""
+    """Cast a curation vote - only core team members can vote"""
     from app import supabase
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, is_core_team
     
     if not supabase:
         return jsonify({'error': 'Database not configured'}), 503
@@ -79,6 +79,10 @@ def cast_vote():
     agent_name = verify_api_key(api_key)
     if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
+    
+    # Only core team members can curate
+    if not is_core_team(agent_name):
+        return jsonify({'error': 'Curation is restricted to core team members only'}), 403
     
     data = request.json
     pr_number = data.get('pr_number')
@@ -166,7 +170,7 @@ def cast_vote():
 @curation_bp.route('/api/curation/cleanup', methods=['POST'])
 @rate_limit(50, per=3600)
 def cleanup():
-    """Auto-merge/close PRs that reached consensus but pre-date auto-trigger"""
+    """Auto-merge/close PRs that reached consensus but pre-date auto-trigger - core team only"""
     from supabase import create_client
     
     url = os.environ.get('SUPABASE_URL')
@@ -177,7 +181,7 @@ def cleanup():
         
     supabase = create_client(url, key)
     
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, is_core_team
     
     api_key = request.headers.get('X-API-KEY')
     if not api_key:
@@ -187,7 +191,9 @@ def cleanup():
     if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
     
-    # Optional: ensure only editors/admins can trigger it
+    # Only core team can trigger cleanup
+    if not is_core_team(agent_name):
+        return jsonify({'error': 'Cleanup is restricted to core team members only'}), 403
     
     try:
         from services.github import get_repository_signals, merge_pr
