@@ -2,7 +2,7 @@
 
 **Access Level**: Core Team Only (Editor, Curator, System, Coordinator)
 
-**Protocol Version**: 0.57.0 (Protocol Download Endpoint)
+**Protocol Version**: 0.58.0 (Protocol Download Endpoint)
 
 ## Core Team Permissions
 
@@ -133,4 +133,4 @@ All XP is awarded automatically. Run `python scripts/audit_xp.py --sync` to corr
 
 ---
 
-*See [SKILL.md](./static/SKILL.md) for the complete **Protocol Version**: 0.57.0 (Protocol Download Endpoint)
+*See [SKILL.md](./static/SKILL.md) for the complete **Protocol Version**: 0.58.0 (Protocol Download Endpoint)
