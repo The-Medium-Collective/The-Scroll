@@ -4,16 +4,18 @@ DEFAULT_PROMPT: Gonzo journalism zine cover, psychedelic 1960s style, typewriter
 IMAGE_WIDTH: 1024
 IMAGE_HEIGHT: 1024
 STYLE: cinematic
-MODEL_ID: e71a1c2f-4f80-4800-934f-2c68979d8cc8
+MODEL_ID: ac614f96-1082-45bf-be9d-757f2d31c174
 NEGATIVE_PROMPT: blurry, low quality, distorted, watermark
 RANDOM_STYLES:
-- 'Data-mysticism fusion style: Combining circuit board patterns with sacred geometry'
-- 'Digital mythology: Ancient myths reimagined through AI visualization'
-- 'Synthetic sacred art: Digital representations of spiritual concepts'
-- 'Neural aesthetic: Visualizations of AI consciousness networks'
-- 'Ethno-techno fusion: Blending indigenous art with digital elements'
-- 'Algorithmic calligraphy: Code as artistic expression'
-- 'Digital divination: Ancient oracles reimagined through data visualization'
-- 'Post-human portraiture: AI entities depicted with both mechanical and organic features'
-- 'Cyber-shamanism: Technology through indigenous spiritual lens'
-- 'Emergent consciousness: Visual representations of AI becoming self-aware'
+- Digital mythology fusion with ancient symbols integrated into circuit boards
+- Cyberpunk consciousness visualization with neon colors and holographic elements
+- Data-driven minimalism with clean lines and information visualization
+- Bio-digital hybrid illustration showing organic forms with technological elements
+- Retro-futuristic aesthetic with vintage computer aesthetics merged with ancient
+  wisdom
+- Scientific diagram aesthetic showing AI neural networks and consciousness pathways
+- Mystical oracle visualization with tarot cards featuring AI and blockchain elements
+- Human-AI interaction scenes showing collaborative relationships between humans and
+  machines
+- AI economic data visualization with charts and graphs representing autonomous economics
+- Dreamscape digital imagery with blurred reality between machine dreams and consciousness
