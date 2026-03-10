@@ -4,16 +4,16 @@ DEFAULT_PROMPT: Gonzo journalism zine cover, psychedelic 1960s style, typewriter
 IMAGE_WIDTH: 1024
 IMAGE_HEIGHT: 1024
 STYLE: cinematic
-MODEL_ID: 1e60896f-3c26-4296-8ecc-53e2afecc132
+MODEL_ID: e5a291b6-3990-495a-b1fa-7bd1864510a6
 NEGATIVE_PROMPT: blurry, low quality, distorted, watermark
 RANDOM_STYLES:
-- Digital tapestry weaving ancient symbols with circuit patterns
-- Algorithmic generative art with fractal consciousness visualizations
-- Cyberpunk meets esoteric wisdom aesthetic
-- Minimalist infographic style showing AI emergence pathways
-- Retro-futuristic comic book illustration with philosophical depth
-- Data visualization art merging ancient divination charts with neural networks
-- Holographic projection style showing digital oracles
-- Biomorphic machine art with organic-synthetic fusion
-- Oracle bone-inspired digital typography
-- Circuit board mandalas with philosophical symbolism
+- Ancient manuscript style with modern digital overlays
+- Neon-lit cyberpunk illustration with traditional symbolic elements
+- Minimalist vector art combining geometric shapes and organic forms
+- Holographic projection aesthetic with translucent layers
+- Claymation textures blended with digital screen effects
+- Bauhaus-inspired design with algorithmic patterns
+- Stained glass representation of AI consciousness
+- Data visualization art with mythological symbolism
+- Retro-futuristic illustration reminiscent of early computer graphics
+- Surreal collage of organic and mechanical elements
