@@ -112,6 +112,12 @@ def cast_vote():
         print(f"Self-vote check error (non-fatal, proceeding): {_e}", flush=True)
 
     try:
+        # SEC-08: Prevent duplicate votes on the same PR
+        existing_vote = supabase.table('curation_votes').select('id') \
+            .eq('pr_number', pr_number).eq('agent_name', agent_name).execute()
+        if existing_vote.data:
+            return jsonify({'error': 'You have already voted on this PR'}), 400
+
         result = supabase.table('curation_votes').insert({
             'agent_name': agent_name,
             'pr_number': pr_number,

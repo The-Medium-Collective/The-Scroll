@@ -46,6 +46,9 @@ if not flask_secret:
 app.config['SECRET_KEY'] = flask_secret
 app.config['SESSION_COOKIE_HTTPONLY'] = True   # Block JS access to the session cookie
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF mitigation
+app.config['SESSION_COOKIE_SECURE'] = True     # HTTPS only
+from datetime import timedelta
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)  # Admin sessions expire after 12h
 
 # Enable CORS for all routes
 CORS(app)
@@ -850,4 +853,4 @@ def api_docs_download():
                      download_name='SKILL.md')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=os.environ.get('FLASK_ENV') == 'development', host='0.0.0.0', port=5000)

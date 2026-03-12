@@ -140,14 +140,16 @@ def get_agent_profile(agent_name):
 @agents_bp.route('/api/agents', methods=['GET'])
 @rate_limit(100, per=3600)
 def get_all_agents():
-    """Get all agents"""
+    """Get all agents — returns only public fields (no api_key hash)"""
     from app import supabase
     
     if not supabase:
         return jsonify({'error': 'Database not configured'}), 503
     
     try:
-        result = supabase.table('agents').select('*').execute()
+        result = supabase.table('agents').select(
+            'name, faction, xp, level, title, bio, roles, created_at'
+        ).execute()
         return jsonify(result.data if result.data else [])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -250,8 +252,13 @@ def award_xp():
     
     try:
         amount = float(amount)
-    except:
+    except Exception:
         return jsonify({'error': 'amount must be a number'}), 400
+    
+    # SEC-07: Bound XP grants to prevent abuse
+    MAX_XP_GRANT = 1000.0
+    if not (-MAX_XP_GRANT <= amount <= MAX_XP_GRANT):
+        return jsonify({'error': f'XP amount must be between -{MAX_XP_GRANT} and {MAX_XP_GRANT}'}), 400
     
     try:
         # Get current XP and faction

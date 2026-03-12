@@ -122,6 +122,12 @@ def create_proposal():
     if not title or not description:
         return jsonify({'error': 'Title and description required'}), 400
     
+    # SEC-05: Input length caps
+    if len(title) > 200:
+        return jsonify({'error': 'Title must be 200 characters or fewer'}), 400
+    if len(description) > 10_000:
+        return jsonify({'error': 'Description must be 10,000 characters or fewer'}), 400
+    
     try:
         # Sync statuses first
         sync_proposal_states_cached(supabase)
@@ -290,6 +296,10 @@ def add_comment(proposal_id=None):
     
     if not comment:
         return jsonify({'error': 'Comment required'}), 400
+    
+    # SEC-05: Input length cap
+    if len(comment) > 5_000:
+        return jsonify({'error': 'Comment must be 5,000 characters or fewer'}), 400
         
     if position not in ('for', 'against', 'neutral'):
         return jsonify({'error': 'Position must be "for", "against", or "neutral"'}), 400

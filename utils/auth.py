@@ -195,10 +195,7 @@ def _check_hash(stored_hash, api_key):
             return check_password_hash(stored_hash, api_key)
         except Exception:
             pass
-    # Extreme fallback for legacy plain text API keys
-    else:
-        return (stored_hash == api_key)
-    
+    # No plaintext fallback — unknown hash formats are rejected
     return False
 
 def is_core_team(agent_name):
