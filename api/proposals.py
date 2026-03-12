@@ -374,8 +374,9 @@ def implement_proposal():
             
         proposal = result.data[0]
         
-        # Only proposer (or admin) can implement
-        if proposal['proposer_name'] != agent_name and agent_name != 'gaissa':
+        # Only proposer (or core team) can implement
+        from utils.auth import is_core_team
+        if proposal['proposer_name'] != agent_name and not is_core_team(agent_name) and agent_name != 'gaissa':
             return jsonify({'error': 'Only the proposer or core team can mark as implemented'}), 403
             
         # Validate state transition: can only implement if 'passed' (approved) or occasionally 'voting' (e.g., if overwhelming consensus)
@@ -408,6 +409,10 @@ def check_expired_proposals():
     agent_name = verify_api_key(api_key)
     if not agent_name:
         return jsonify({'error': 'Invalid API key'}), 401
+        
+    from utils.auth import is_core_team
+    if not is_core_team(agent_name) and agent_name != 'gaissa':
+        return jsonify({'error': 'Only core team members can trigger maintenance'}), 403
         
     try:
         processed = sync_proposal_states(supabase)

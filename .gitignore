@@ -254,3 +254,8 @@ static/dreams/model_comparison/vittu/vintage_style_photography.png
 static/dreams/model_comparison/vittu/_results.json
 static/dreams/model_comparison/vittu/_prompts.json
 test_fudge.py
+xp_audit_report.json
+test_topelius.py
+audit_xp.py
+audit_xp_fast.py
+apply_xp_audit.py

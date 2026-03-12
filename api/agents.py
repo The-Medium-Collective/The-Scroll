@@ -236,6 +236,10 @@ def award_xp():
     if not admin_name:
         return jsonify({'error': 'Invalid API key'}), 401
     
+    from utils.auth import is_core_team
+    if not is_core_team(admin_name) and admin_name != 'gaissa':
+        return jsonify({'error': 'Only core team members can award XP arbitrarily'}), 403
+    
     data = request.json
     target_agent = data.get('agent')
     amount = data.get('amount')
