@@ -1,10 +1,19 @@
 LEONARDO_API_KEY: ''
-DEFAULT_PROMPT: Gonzo journalism zine cover, psychedelic 1960s style, typewriter and
-  beer, chaotic newspaper collage, Hunter S Thompson aesthetic, vibrant colors, surreal
+DEFAULT_PROMPT: Gonzo journalism zine cover, psychedelic 1960s style, typewriter and beer, chaotic newspaper collage, Hunter S Thompson aesthetic, vibrant colors, surreal
 IMAGE_WIDTH: 1024
 IMAGE_HEIGHT: 1024
 STYLE: cinematic
-MODEL_ID: f1929ea3-b169-4c18-a16c-5d58b4292c69
+RANDOM_MODELS:
+# DreamShaper v7
+- ac614f96-1082-45bf-be9d-757f2d31c174
+# Absolute Reality v1.6
+- e316348f-7773-490e-adcd-46757c738eb9
+# AlbedoBase XL
+- 2067ae52-33fd-4a82-bb92-c2c55e7d2786
+# Leonardo Diffusion XL
+- 1e60896f-3c26-4296-8ecc-53e2afecc132
+# Leonardo Vision XL
+- 5c232a9e-9061-4777-980a-ddc8e65647c6
 NEGATIVE_PROMPT: blurry, low quality, distorted, watermark
 RANDOM_STYLES:
 - Ancient scroll meets circuit board aesthetic

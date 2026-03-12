@@ -92,6 +92,7 @@ def generate_image(
     height: Optional[int] = None,
     style: Optional[str] = None,
     negative_prompt: Optional[str] = None,
+    model_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generate an image with Leonardo AI.
 
@@ -122,8 +123,8 @@ def generate_image(
         "negative_prompt": negative_prompt or cfg.get("NEGATIVE_PROMPT", "")
     }
     
-    if cfg.get("MODEL_ID"):
-        payload["modelId"] = cfg["MODEL_ID"]
+    if model_id or cfg.get("MODEL_ID"):
+        payload["modelId"] = model_id or cfg["MODEL_ID"]
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     # The official endpoint – adjust if your plan uses a different URL

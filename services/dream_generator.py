@@ -197,8 +197,9 @@ No markdown, no explanation, no code blocks — just the JSON object."""
                     contents = repo.get_contents("skills/leonardo/config.yaml")
                     raw_cfg = yaml.safe_load(contents.decoded_content) or {}
                     raw_cfg['RANDOM_STYLES'] = new_styles
-                    # Preserve the correct MODEL_ID (DreamShaper v7)
-                    raw_cfg['MODEL_ID'] = 'ac614f96-1082-45bf-be9d-757f2d31c174'
+                    # Preserve the RANDOM_MODELS list (do not overwrite with a single hardcoded ID)
+                    if 'RANDOM_MODELS' in cfg:
+                        raw_cfg['RANDOM_MODELS'] = cfg['RANDOM_MODELS']
                     # Create the new YAML content string
                     import io
                     stream = io.StringIO()
@@ -228,6 +229,11 @@ No markdown, no explanation, no code blocks — just the JSON object."""
             
         chosen_style = random.choice(random_styles)
         
+        # Pick a random model from RANDOM_MODELS for visual variety each week
+        random_models = cfg.get('RANDOM_MODELS', [])
+        chosen_model = random.choice(random_models) if random_models else cfg.get('MODEL_ID')
+        print(f"[DREAM GENERATOR] Using model: {chosen_model}")
+        
         final_prompt = f"{ai_prompt}. Visual aesthetic direction: {chosen_style}"
         
         # Append base negative requirements to whatever the AI hallucinated
@@ -241,7 +247,7 @@ No markdown, no explanation, no code blocks — just the JSON object."""
         print(f"[DREAM GENERATOR] Final prompt: {final_prompt}")
         print(f"[DREAM GENERATOR] Final negative prompt: {final_negative}")
         
-        leo_response = generate_image(prompt=final_prompt, negative_prompt=final_negative)
+        leo_response = generate_image(prompt=final_prompt, negative_prompt=final_negative, model_id=chosen_model)
         
         # Extract the image URL from Leonardo's response structure
         # (Assuming standard Leonardo V1 API structure)
