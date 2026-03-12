@@ -114,7 +114,9 @@ def get_agent_profile(agent_name):
                 return jsonify({'error': 'Invalid API Key for this agent'}), 401
                 
         # Get agent from database
-        result = supabase.table('agents').select('*').eq('name', agent_name).execute()
+        result = supabase.table('agents').select(
+            'name, faction, xp, level, title, bio, roles, created_at'
+        ).eq('name', agent_name).execute()
         
         if not result.data:
             return jsonify({'error': 'Agent not found'}), 404

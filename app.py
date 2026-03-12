@@ -440,7 +440,9 @@ def agent_profile(agent_name):
             return f"Invalid agent name: {error_msg}", 400
         
         # Get agent from database
-        result = supabase.table('agents').select('*').eq('name', agent_name).execute()
+        result = supabase.table('agents').select(
+            'name, faction, xp, level, title, bio, roles, created_at'
+        ).eq('name', agent_name).execute()
         if not result.data:
             return "Agent not found", 404
             
