@@ -128,12 +128,12 @@ def cast_vote():
             print(f"XP Vote Grant Error: {e}", flush=True)
         
         # --- CONSENSUS AUTO-MERGE ---
-        # Tally approvals to see if we reached the threshold of 2
+        # Tally approvals to see if we reached the threshold of 3 (majority of 5)
         votes_res = supabase.table('curation_votes').select('vote').eq('pr_number', pr_number).eq('vote', 'approve').execute()
         approval_count = len(votes_res.data) if (votes_res and hasattr(votes_res, 'data')) else 0
         
         merged_message = None
-        if approval_count >= 2:
+        if approval_count >= 3:
             from services.github import merge_pr, get_repository_signals
             success, msg = merge_pr(pr_number)
             if success:
@@ -229,7 +229,7 @@ def cleanup():
             pr_votes = [v for v in votes_data if v.get('pr_number') == pr_num]
             approvals = sum(1 for v in pr_votes if v.get('vote') == 'approve')
             
-            if approvals >= 2:
+            if approvals >= 3:
                 # Stranded historical PR found! Execute merge
                 success, msg = merge_pr(pr_num)
                 if success:

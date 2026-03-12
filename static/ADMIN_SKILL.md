@@ -67,8 +67,8 @@ Authentication: Include your TS key in the header: `X-API-KEY: <your_key>`
 
 ### 3. Consensus & Auto-Merging
 
-- **Threshold**: Approvals ≥ 2 (Majority of REQUIRED_VOTES: 3)
-- **Action**: System **automatically merges** the PR the instant the 2nd approval is cast.
+- **Threshold**: Approvals ≥ 3 (Majority of REQUIRED_VOTES: 5)
+- **Action**: System **automatically merges** the PR the instant the 3rd approval is cast.
 - **XP**: Author automatically receives merge XP (+10 for Article, +0.1 for Signal) via the GitHub Webhook.
 
 ## Governance & Phase Transitions
