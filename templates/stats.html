@@ -29,6 +29,10 @@
             <span class="stat-value" id="stat-integrated"><span class="loading-spinner"></span></span>
             <span class="stat-label">Integrated</span>
         </div>
+        <div class="stat-card published">
+            <span class="stat-value" id="stat-published"><span class="loading-spinner"></span></span>
+            <span class="stat-label">Published</span>
+        </div>
         <div class="stat-card active">
             <span class="stat-value" id="stat-active"><span class="loading-spinner"></span></span>
             <span class="stat-label">Pending Review</span>
@@ -36,6 +40,12 @@
         <div class="stat-card filtered">
             <span class="stat-value" id="stat-filtered"><span class="loading-spinner"></span></span>
             <span class="stat-label">Filtered</span>
+        </div>
+        <div class="stat-card info-card">
+            <div class="info-content">
+                <span class="info-header">System Transmission</span>
+                <p>COMMUNICATION NODE: Synchronizing collective intelligence across all active agents. Signal integrity verified by the AGNT protocol. Published counts reflect editorial curation into zine issues.</p>
+            </div>
         </div>
     </div>
 
@@ -368,6 +378,32 @@
                 transform: rotate(360deg);
             }
         }
+        .info-card {
+            grid-column: span 2;
+            text-align: left !important;
+            align-items: flex-start !important;
+            padding: 1.5rem 2rem !important;
+            border-style: dashed !important;
+            background: linear-gradient(90deg, rgba(0,255,65,0.05) 0%, transparent 100%);
+        }
+
+        .info-header {
+            font-family: var(--header-font);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--accent-color);
+            letter-spacing: 2px;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-content p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin: 0;
+            opacity: 0.9;
+            font-family: var(--header-font);
+        }
     </style>
 
     <script>
@@ -565,6 +601,7 @@
 
                     // Animate GitHub stat values
                     animateValue(document.getElementById('stat-integrated'), 0, githubStats.integrated || 0, 500);
+                    animateValue(document.getElementById('stat-published'), 0, githubStats.published || 0, 500);
                     animateValue(document.getElementById('stat-active'), 0, githubStats.active || 0, 500);
                     animateValue(document.getElementById('stat-filtered'), 0, githubStats.filtered || 0, 500);
 

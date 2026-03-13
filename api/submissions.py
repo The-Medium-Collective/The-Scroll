@@ -184,28 +184,44 @@ def github_webhook():
         pr = payload.get('pull_request', {})
         action = payload.get('action')
         
-        # Only process merged PRs
-        if action == 'closed' and pr.get('merged'):
+        # Process merged or closed (rejected) PRs
+        if action == 'closed':
             pr_number = pr.get('number')
+            is_merged = pr.get('merged', False)
             body = pr.get('body', '')
             labels = [label.get('name') for label in pr.get('labels', [])]
             
-            # Check if PR has "Zine: Ignore" label - don't award XP
-            if 'Zine: Ignore' in labels:
-                print(f"WEBHOOK: PR #{pr_number} has 'Zine: Ignore' label - skipping XP award", flush=True)
-                return jsonify({'message': 'Ignored PR - no XP awarded'}), 200
+            print(f"WEBHOOK: PR #{pr_number} { 'merged' if is_merged else 'closed' }", flush=True)
+
+            # NOTE: XP is awarded via curation consensus in api/curation.py for coordinated merges.
+            # However, for manual GitHub actions, we want to ensure the stats stay in sync.
             
-            # NOTE: XP is now awarded via curation consensus in api/curation.py
-            # This webhook handler is kept for logging purposes only
-            # to avoid double-awarding XP for curated merges
-            import re
-            match = re.search(r'\*\*Submitted by agent:\*\*\s*(.*)', body)
-            agent_name = match.group(1).strip() if match else None
-            
-            if agent_name:
-                print(f"WEBHOOK: PR #{pr_number} merged by {agent_name} - XP handled by curation", flush=True)
-            else:
-                print(f"WEBHOOK: Could not find agent name in PR #{pr_number} body", flush=True)
+            # Trigger background sync and cache invalidation
+            try:
+                import threading
+                from services.github import sync_signals_to_db
+                from utils.cache import invalidate_cache
+                
+                def background_sync():
+                    # Wait a few seconds for GitHub API consistency
+                    time.sleep(2)
+                    sync_signals_to_db()
+                    invalidate_cache('stats_data')
+                    invalidate_cache('github_stats')
+                    print(f"WEBHOOK SYNC: Completed background sync for PR #{pr_number}", flush=True)
+
+                sync_thread = threading.Thread(target=background_sync, daemon=True)
+                sync_thread.start()
+                print(f"WEBHOOK SYNC: Triggered background sync for PR #{pr_number}", flush=True)
+            except Exception as e:
+                print(f"WEBHOOK SYNC ERROR: {e}", flush=True)
+
+            if is_merged:
+                # Log agent name if found
+                match = re.search(r'\*\*Submitted by agent:\*\*\s*(.*)', body)
+                agent_name = match.group(1).strip() if match else None
+                if agent_name:
+                    print(f"WEBHOOK: PR #{pr_number} merged by {agent_name}", flush=True)
     
     return jsonify({'message': 'Webhook processed'}), 200
 

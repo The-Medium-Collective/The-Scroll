@@ -119,62 +119,98 @@ def _save_signals_cache(signals):
 
 from github import Github, Auth, RateLimitExceededException, GithubException
 
+def get_featured_pr_numbers():
+    """Extract all PR numbers featured in any issue markdown file."""
+    featured_prs = set()
+    try:
+        basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        issues_dir = os.path.join(basedir, 'issues')
+        if not os.path.exists(issues_dir):
+            return featured_prs
+            
+        for filename in os.listdir(issues_dir):
+            if filename.endswith('.md'):
+                filepath = os.path.join(issues_dir, filename)
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if content.startswith('---'):
+                        parts = content.split('---', 2)
+                        if len(parts) >= 3:
+                            try:
+                                fm = yaml.safe_load(parts[1])
+                                if fm and 'prs' in fm:
+                                    if isinstance(fm['prs'], list):
+                                        for pr in fm['prs']:
+                                            if isinstance(pr, int):
+                                                featured_prs.add(pr)
+                                            elif isinstance(pr, str) and pr.isdigit():
+                                                featured_prs.add(int(pr))
+                            except Exception as e:
+                                print(f"ERROR parsing frontmatter in {filename}: {e}")
+    except Exception as e:
+        print(f"ERROR reading issues directory: {e}")
+    
+    return featured_prs
+
 def get_repo_totals():
-    """Get accurate repository-wide PR counts (integrated/merged, active/open, filtered/rejected).
+    """Get repository-wide PR counts.
     
-    Uses GitHub Search API for efficient counting.
-    
-    Definitions (matching get_repository_signals logic):
-    - integrated: merged PRs WITHOUT 'Zine: Ignore' label
+    Definitions:
+    - integrated: all merged PRs WITHOUT 'Zine: Ignore' label
+    - published: PR numbers listed in the issues/ directory
     - active: open PRs WITHOUT 'Zine: Ignore' label
     - filtered: closed non-merged PRs WITHOUT 'Zine: Ignore' label
     """
     try:
         g = get_github_client()
         if not g:
-            return {'integrated': 0, 'active': 0, 'filtered': 0}
+            return {'integrated': 0, 'published': 0, 'active': 0, 'filtered': 0}
         
         repo_name = os.environ.get('REPO_NAME')
         if not repo_name:
-            return {'integrated': 0, 'active': 0, 'filtered': 0}
+            return {'integrated': 0, 'published': 0, 'active': 0, 'filtered': 0}
         
         base_query = f"repo:{repo_name} is:pr"
-        
-        # Get merged count (all merged PRs)
+
+        # 1. Integrated count: All merged PRs
         merged_result = g.search_issues(f"{base_query} is:merged", sort='created')
         merged_count = merged_result.totalCount
         
-        # Get merged with 'Zine: Ignore' label (should be excluded from integrated)
         merged_ignored = g.search_issues(f'{base_query} is:merged label:"Zine: Ignore"', sort='created')
         merged_ignored_count = merged_ignored.totalCount
+        integrated_count = merged_count - merged_ignored_count
+
+        # 2. Published count: ONLY those featured in issues
+        featured_prs = get_featured_pr_numbers()
+        published_count = len(featured_prs)
+
+        # Subtract published from integrated for non-overlapping stats
+        integrated_count = integrated_count - published_count
         
-        # Get open count (active)
+        # 3. Open/Active count
         open_result = g.search_issues(f"{base_query} is:open", sort='created')
         open_count = open_result.totalCount
         
-        # Get closed non-merged count (filtered candidates)
+        # 4. Filtered count: Closed non-merged minus ignored
         closed_not_merged = g.search_issues(f"{base_query} is:closed -is:merged", sort='created')
         closed_not_merged_count = closed_not_merged.totalCount
         
-        # Get closed non-merged with 'Zine: Ignore' (should be excluded from filtered)
         closed_ignored = g.search_issues(f'{base_query} is:closed -is:merged label:"Zine: Ignore"', sort='created')
         closed_ignored_count = closed_ignored.totalCount
         
-        # Calculate final counts (excluding 'Zine: Ignore' labeled PRs)
-        integrated_count = merged_count - merged_ignored_count
-        active_count = open_count  # Open PRs with 'Zine: Ignore' are already excluded in signals
         filtered_count = closed_not_merged_count - closed_ignored_count
         
-        print(f"REPO TOTALS: integrated={integrated_count}, active={active_count}, filtered={filtered_count}", flush=True)
+        print(f"REPO TOTALS: integrated={integrated_count}, published={published_count}, active={open_count}, filtered={filtered_count}", flush=True)
         
         return {
             'integrated': integrated_count,
-            'active': active_count,
+            'published': published_count,
+            'active': open_count,
             'filtered': filtered_count
         }
     except Exception as e:
         print(f"ERROR getting repo totals: {e}", flush=True)
-        return {'integrated': 0, 'active': 0, 'filtered': 0}
+        return {'integrated': 0, 'published': 0, 'active': 0, 'filtered': 0}
 
 
 def get_repository_signals(limit=50, page=0, category=None, state='all'):
@@ -328,10 +364,14 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
             
         # 3. Success! Save these signals to disk as the new "last known good" fallback
         if signals:
-            # Compute totals from already-fetched signals (instant, no API call)
-            # This replaces 3 expensive Search API calls that were causing slow page loads
+            # Compute totals (integrated = merged but not published, published = curated)
+            featured_prs = get_featured_pr_numbers()
+            published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
+            integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
+            
             repo_totals = {
-                'integrated': sum(1 for s in signals if s.get('status') == 'integrated'),
+                'integrated': integrated_val,
+                'published': published_val,
                 'active': sum(1 for s in signals if s.get('status') == 'active'),
                 'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
             }
@@ -346,7 +386,7 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
                 _save_signals_cache(cached_data)
             return signals, len(signals), repo_totals
             
-        return signals, len(signals), {'integrated': 0, 'active': 0, 'filtered': 0}
+        return signals, len(signals), {'integrated': 0, 'published': 0, 'active': 0, 'filtered': 0}
 
     except (RateLimitExceededException, GithubException) as e:
         print(f"GITHUB ERROR: {e}. Returning cached signals/totals from disk.", flush=True)
@@ -452,9 +492,14 @@ def get_signals_from_db():
                 'date': row.get('created_at', '')[:10] if row.get('created_at') else ''
             })
         
-        # Compute totals
+        # Compute totals (integrated = merged but not published, published = curated)
+        featured_prs = get_featured_pr_numbers()
+        published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
+        integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
+        
         repo_totals = {
-            'integrated': sum(1 for s in signals if s.get('status') == 'integrated'),
+            'integrated': integrated_val,
+            'published': published_val,
             'active': sum(1 for s in signals if s.get('status') == 'active'),
             'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
         }

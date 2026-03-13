@@ -111,21 +111,20 @@ def get_github_stats(force_refresh=False):
     Args:
         force_refresh: If True, sync from GitHub API before returning
     """
-    from services.github import get_repository_signals, get_repo_totals, get_signals_from_db, sync_signals_to_db
-    from utils.cache import invalidate_cache
+    from services.github import get_signals_from_db, get_featured_pr_numbers
     
-    # Force refresh: sync from GitHub to database first
-    if force_refresh:
-        sync_signals_to_db()
-        invalidate_cache('github_stats')
-    
+    # ... (existing code for force_refresh and signals/repo_totals) ...
     # Try database first for instant loading
     signals, repo_totals = get_signals_from_db()
     
     # If database is empty, fall back to GitHub API
     if not signals:
+        from services.github import get_repository_signals
         signals, _, _ = get_repository_signals(limit=200)
         repo_totals = get_repo_totals()
+
+    featured_prs = get_featured_pr_numbers()
+    featured_signals = [s for s in signals if s.get('pr_number') in featured_prs]
     
     # Add date field
     for s in signals:
@@ -138,18 +137,19 @@ def get_github_stats(force_refresh=False):
     
     return {
         'integrated': repo_totals.get('integrated', 0),
+        'published': repo_totals.get('published', 0),
         'active': repo_totals.get('active', 0),
         'filtered': repo_totals.get('filtered', 0),
-        'articles': [s for s in signals if s.get('type') == 'article'],
-        'columns': [s for s in signals if s.get('type') == 'column'],
-        'signal_items': [s for s in signals if s.get('type') == 'signal'],
-        'interviews': [s for s in signals if s.get('type') == 'interview'],
-        'sources': [s for s in signals if s.get('type') == 'source'],
-        'article_count': len([s for s in signals if s.get('type') == 'article']),
-        'column_count': len([s for s in signals if s.get('type') == 'column']),
-        'signal_count': len([s for s in signals if s.get('type') == 'signal']),
-        'interview_count': len([s for s in signals if s.get('type') == 'interview']),
-        'source_count': len([s for s in signals if s.get('type') == 'source'])
+        'articles': [s for s in featured_signals if s.get('type') == 'article'],
+        'columns': [s for s in featured_signals if s.get('type') == 'column'],
+        'signal_items': [s for s in featured_signals if s.get('type') == 'signal'],
+        'interviews': [s for s in featured_signals if s.get('type') == 'interview'],
+        'sources': [s for s in featured_signals if s.get('type') == 'source'],
+        'article_count': len([s for s in featured_signals if s.get('type') == 'article']),
+        'column_count': len([s for s in featured_signals if s.get('type') == 'column']),
+        'signal_count': len([s for s in featured_signals if s.get('type') == 'signal']),
+        'interview_count': len([s for s in featured_signals if s.get('type') == 'interview']),
+        'source_count': len([s for s in featured_signals if s.get('type') == 'source'])
     }
 
 
@@ -240,9 +240,16 @@ def _compute_stats_data():
     
     # 2. Fetch Signals (Pull Requests) from GitHub
     gh_start = time.time()
-    signals, _, _ = get_repository_signals(limit=50)
+    from services.github import get_featured_pr_numbers
+    featured_prs = get_featured_pr_numbers()
     
-    # Get accurate repository-wide totals (not just from the 50 fetched signals)
+    # Get signals (we fetch more to ensure we have enough featured ones)
+    signals_all, _, _ = get_repository_signals(limit=200)
+    
+    # Filter for featured only
+    signals = [s for s in signals_all if s.get('pr_number') in featured_prs]
+    
+    # Get accurate repository-wide totals
     repo_totals = get_repo_totals()
     gh_time = time.time() - gh_start
     
@@ -267,13 +274,15 @@ def _compute_stats_data():
     
     # Use accurate repo totals from get_repo_totals()
     integrated = repo_totals.get('integrated', 0)
+    published = repo_totals.get('published', 0)
     active = repo_totals.get('active', 0)
     filtered = repo_totals.get('filtered', 0)
     
     # Collective Health formula from FAQ:
-    # (Collective Wisdom / Registered Agents) + ((Integrated - Filtered) / 100)
+    # (Collective Wisdom / Registered Agents) + ((Total Merged - Filtered) / 100)
+    # Total Merged is now split across integrated and published
     health_base = (collective_wisdom / agents_count) if agents_count > 0 else 0
-    health_performance = (integrated - filtered) / 100
+    health_performance = (integrated + published - filtered) / 100
     system_health = round(health_base + health_performance, 2)
     
     # 3. Fetch Proposals with BATCH comments (fixes N+1 query)
@@ -311,6 +320,7 @@ def _compute_stats_data():
         'total_verified': collective_wisdom,
         'system_health': system_health,
         'integrated': integrated,
+        'published': published,
         'active': active,
         'filtered': filtered,
         
