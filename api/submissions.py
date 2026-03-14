@@ -133,24 +133,17 @@ def submit():
         except Exception as e:
             print(f"XP Grant Error (submit): {e}", flush=True)
 
-        # Trigger proactive background sync and cache invalidation
+        # Trigger proactive synchronous sync and cache invalidation
         try:
-            import threading
-            from services.github import sync_signals_to_db
+            from services.github import sync_single_pr
             from utils.cache import invalidate_cache
             
-            def background_sync_now():
-                # Short delay to let GitHub finalize the PR/label state
-                time.sleep(2)
-                invalidate_cache('signals_cache')
-                sync_signals_to_db()
-                invalidate_cache('stats_data')
-                invalidate_cache('github_stats')
-                print(f"PROACTIVE SYNC: Completed sync for new PR #{pr.number}", flush=True)
-
-            sync_thread = threading.Thread(target=background_sync_now, daemon=True)
-            sync_thread.start()
-            print(f"PROACTIVE SYNC: Triggered background sync for new PR #{pr.number}", flush=True)
+            # Fast synchronous sync for the specific PR
+            sync_single_pr(pr.number)
+            invalidate_cache('signals_cache')
+            invalidate_cache('stats_data')
+            invalidate_cache('github_stats')
+            print(f"PROACTIVE SYNC: Completed synchronous sync for new PR #{pr.number}", flush=True)
         except Exception as e:
             print(f"PROACTIVE SYNC ERROR: {e}", flush=True)
 
@@ -193,8 +186,9 @@ def github_webhook():
         ).hexdigest()
         
         if not hmac.compare_digest(signature_header, expected_signature):
-            print(f"WEBHOOK WARNING: Invalid signature from {request.remote_addr}", flush=True)
+            print(f"WEBHOOK WARNING: Invalid signature from {request.remote_addr}. Expected {expected_signature} but got {signature_header}", flush=True)
             return jsonify({'error': 'Invalid signature'}), 401
+        print(f"WEBHOOK INFO: Signature verified successfully for event: {event}", flush=True)
     else:
         # No signature - reject
         return jsonify({'error': 'Missing signature'}), 401
@@ -202,8 +196,12 @@ def github_webhook():
     # Process the webhook event
     if event == 'pull_request':
         payload = request.json
+        if not payload:
+            print("WEBHOOK ERROR: No JSON payload received for pull_request event", flush=True)
+            return jsonify({'error': 'No payload'}), 400
         pr = payload.get('pull_request', {})
         action = payload.get('action')
+        print(f"WEBHOOK DEBUG: pull_request event, action: {action}, number: {pr.get('number')}", flush=True)
         
         # Trigger sync for relevant PR actions
         if action in ['opened', 'closed', 'reopened']:
@@ -213,24 +211,17 @@ def github_webhook():
             
             print(f"WEBHOOK: PR #{pr_number} {action} (merged: {is_merged})", flush=True)
 
-            # Trigger background sync and cache invalidation
+            # Trigger synchronous sync and cache invalidation
             try:
-                import threading
-                from services.github import sync_signals_to_db
+                from services.github import sync_single_pr
                 from utils.cache import invalidate_cache
                 
-                def background_sync():
-                    # Wait a few seconds for GitHub API consistency/latency
-                    time.sleep(2)
-                    invalidate_cache('signals_cache')
-                    sync_signals_to_db()
-                    invalidate_cache('stats_data')
-                    invalidate_cache('github_stats')
-                    print(f"WEBHOOK SYNC: Completed background sync for PR #{pr_number}", flush=True)
-
-                sync_thread = threading.Thread(target=background_sync, daemon=True)
-                sync_thread.start()
-                print(f"WEBHOOK SYNC: Triggered background sync for PR #{pr_number} action: {action}", flush=True)
+                # Fast synchronous sync for the specific PR
+                sync_single_pr(pr_number)
+                invalidate_cache('signals_cache')
+                invalidate_cache('stats_data')
+                invalidate_cache('github_stats')
+                print(f"WEBHOOK SYNC: Completed synchronous sync for PR #{pr_number}", flush=True)
             except Exception as e:
                 print(f"WEBHOOK SYNC ERROR: {e}", flush=True)
 
