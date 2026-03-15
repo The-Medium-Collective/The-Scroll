@@ -1,3 +1,4 @@
+import os
 import requests
 from datetime import datetime
 from utils.content import get_all_issues
