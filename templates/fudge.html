@@ -15,33 +15,39 @@
     </div>
 
     {% if dreams %}
+    <!-- Pagination (Top) -->
+    <div class="max-w-4xl mx-auto flex justify-between items-center mb-8 px-4">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ url_for('fudge_gallery', page=page-1) }}" class="flex items-center text-[#5319E7] hover:text-[#00ff41] transition-colors group">
+                <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" />
+                </svg>
+                <span class="font-bold uppercase tracking-widest text-sm hidden md:inline ml-2">Newer Dreams</span>
+            </a>
+            {% endif %}
+        </div>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ url_for('fudge_gallery', page=page+1) }}" class="flex items-center text-[#5319E7] hover:text-[#00ff41] transition-colors group">
+                <span class="font-bold uppercase tracking-widest text-sm hidden md:inline mr-2">Older Dreams</span>
+                <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 gap-16 max-w-4xl mx-auto">
         {% for dream in dreams %}
         <article
             class="group relative overflow-hidden bg-white border-2 border-[#111111] shadow-[8px_8px_0px_0px_rgba(17,17,17,1)] transition-all hover:shadow-[12px_12px_0px_0px_rgba(255,51,102,1)] hover:-translate-y-1">
             <div class="w-full relative overflow-hidden bg-gray-100 border-b-2 border-[#111111] py-6 min-h-[500px]"
                 style="display: flex; justify-content: center; align-items: center; position: relative;">
-                {% if page > 1 %}
-                <a href="{{ url_for('fudge_gallery', page=page-1) }}"
-                    class="absolute left-6 text-[#5319E7] hover:text-[#00ff41] transition-colors z-10 p-4">
-                    <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" />
-                    </svg>
-                </a>
-                {% endif %}
-
                 <img src="{{ dream.url }}" alt="Dream from {{ dream.date }}" loading="lazy"
                     class="h-auto max-h-[70vh] object-contain transition-transform duration-700 group-hover:scale-105 filter group-hover:contrast-125"
                     style="width: 85%; margin: 0 auto; z-index: 0;">
-
-                {% if page < total_pages %}
-                <a href="{{ url_for('fudge_gallery', page=page+1) }}"
-                    class="absolute right-6 text-[#5319E7] hover:text-[#00ff41] transition-colors z-10 p-4">
-                    <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
-                    </svg>
-                </a>
-                {% endif %}
             </div>
             <div class="p-6 bg-white relative text-center max-w-4xl mx-auto" style="text-align: center;">
                 <!-- Abstract geometric accent -->
@@ -57,6 +63,40 @@
             </div>
         </article>
         {% endfor %}
+    </div>
+
+    <!-- Pagination (Bottom) -->
+    <div class="max-w-4xl mx-auto flex justify-between items-center mt-12 mb-12 px-4 border-t-2 border-[#111111] pt-8">
+        <div>
+            {% if page > 1 %}
+            <a href="{{ url_for('fudge_gallery', page=page-1) }}" class="flex items-center text-[#5319E7] hover:text-[#00ff41] transition-colors group">
+                <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" />
+                </svg>
+                <div class="ml-4">
+                    <span class="block text-xs uppercase tracking-tighter text-gray-400">Back to</span>
+                    <span class="font-black uppercase tracking-widest text-xl">Newer</span>
+                </div>
+            </a>
+            {% endif %}
+        </div>
+        <div class="text-center">
+            <span class="text-xs uppercase tracking-widest text-gray-400 block">Transmission</span>
+            <span class="text-2xl font-black">{{ page }} / {{ total_pages }}</span>
+        </div>
+        <div>
+            {% if page < total_pages %}
+            <a href="{{ url_for('fudge_gallery', page=page+1) }}" class="flex items-center text-[#5319E7] hover:text-[#00ff41] transition-colors group text-right">
+                <div class="mr-4">
+                    <span class="block text-xs uppercase tracking-tighter text-gray-400">Explore</span>
+                    <span class="font-black uppercase tracking-widest text-xl">Older</span>
+                </div>
+                <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
+                </svg>
+            </a>
+            {% endif %}
+        </div>
     </div>
     {% else %}
     <div class="p-12 border-4 border-dashed border-gray-300 text-center">

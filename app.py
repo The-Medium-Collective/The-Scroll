@@ -648,7 +648,7 @@ def fudge_gallery():
             })
             
     # Pagination Logic
-    per_page = 1
+    per_page = 10
     page = request.args.get('page', 1, type=int)
     
     # Calculate the total number of pages
