@@ -6,23 +6,35 @@ on:
     - cron: '0 0 * * 0'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
+# Add permissions block to allow pushing changes
+permissions:
+  contents: write
+
 jobs:
   generate-fudge:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate weekly dream
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
         run: |
-          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X POST https://the-scroll.vercel.app/create_fudge/ \
-            -H "Content-Type: application/json" \
-            -d "{\"key\": \"${{ secrets.FUDGE_KEY }}\", \"generate\": true}")
-          
-          echo "HTTP status: $response"
-          echo "Response: $(cat /tmp/response.json)"
-          
-          if [ "$response" != "200" ]; then
-            echo "::error::Fudge generation failed with status $response"
-            exit 1
-          fi
-          
-          echo "✅ Weekly fudge generated successfully!"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate weekly dream
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ secrets.REPO_NAME }}
+          LEONARDO_API_KEY: ${{ secrets.LEONARDO_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python services/dream_generator.py
