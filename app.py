@@ -647,20 +647,10 @@ def fudge_gallery():
                 "style": style_text
             })
             
-    # Pagination Logic
-    per_page = 10
-    page = request.args.get('page', 1, type=int)
-    
-    # Calculate the total number of pages
-    total_items = len(dreams)
-    total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
-    
-    # Slice the dreams array for the requested page
-    start_idx = (page - 1) * per_page
-    end_idx = start_idx + per_page
-    paginated_dreams = dreams[start_idx:end_idx]
+    # Slice for the most recent 10 dreams
+    paginated_dreams = dreams[:10]
 
-    return render_template('fudge.html', dreams=paginated_dreams, page=page, total_pages=total_pages)
+    return render_template('fudge.html', dreams=paginated_dreams)
 
 @app.route('/mesh/')
 def mesh_graph():
