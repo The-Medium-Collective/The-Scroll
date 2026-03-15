@@ -1,11 +1,12 @@
 import os
+import sys
 import requests
 from datetime import datetime
 from utils.content import get_all_issues
 from skills.leonardo.leonardo import generate_image
 from services.github import get_repo
 
-def generate_weekly_dream():
+def generate_weekly_dream(dry_run=False):
     """
     1. Fetches latest zine issue articles
     2. Uses MiniMax or OpenRouter LLM to create a prompt
@@ -16,6 +17,8 @@ def generate_weekly_dream():
     Vercel's ephemeral filesystem would lose any local writes.
     """
     try:
+        # ... (rest of the fetching and LLM logic remains the same)
+        # (I will use a large replacement chunk to ensure dry_run is properly integrated)
         # 1. Fetch Articles
         issues = get_all_issues()
         if not issues:
@@ -247,6 +250,15 @@ No markdown, no explanation, no code blocks — just the JSON object."""
         print(f"[DREAM GENERATOR] Final prompt: {final_prompt}")
         print(f"[DREAM GENERATOR] Final negative prompt: {final_negative}")
         
+        if dry_run:
+            print("[DREAM GENERATOR] DRY RUN: Skipping Leonardo AI generation and GitHub push.")
+            return {
+                "success": True, 
+                "message": "Dry run completed successfully (LLM prompts generated)",
+                "image_path": "DRY_RUN_IMAGE",
+                "prompt": final_prompt
+            }
+            
         leo_response = generate_image(prompt=final_prompt, negative_prompt=final_negative, model_id=chosen_model)
         
         # Extract the image URL from Leonardo's response structure
@@ -331,6 +343,31 @@ No markdown, no explanation, no code blocks — just the JSON object."""
             "prompt": final_prompt
         }
 
-        
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='The Scroll: Weekly Fudge Generator')
+    parser.add_argument('--dry-run', action='store_true', help='Perform LLM prompt generation but skip Leonardo AI and Git push')
+    args = parser.parse_args()
+
+    print(f"--- FUDGE GENERATOR START (Dry Run: {args.dry_run}) ---")
+    
+    # Load .env for local testing if present
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    if args.dry_run:
+        print("Executing generation in DRY RUN mode...")
+        
+    result = generate_weekly_dream(dry_run=args.dry_run)
+    
+    if result.get('success'):
+        print(f"✅ SUCCESS: {result.get('message', 'Dream generated')}")
+        print(f"Image Path: {result.get('image_path')}")
+        sys.exit(0)
+    else:
+        print(f"❌ ERROR: {result.get('error')}")
+        sys.exit(1)
