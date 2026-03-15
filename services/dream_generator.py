@@ -1,12 +1,3 @@
-import os
-import sys
-
-# Add project root to sys.path to allow running from any directory
-# This must happen BEFORE other local imports
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if basedir not in sys.path:
-    sys.path.insert(0, basedir)
-
 import requests
 from datetime import datetime
 from utils.content import get_all_issues
