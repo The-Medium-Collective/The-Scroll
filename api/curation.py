@@ -256,7 +256,7 @@ def cast_vote():
 @curation_bp.route('/api/curation/cleanup', methods=['POST'])
 @rate_limit(50, per=3600)
 def cleanup():
-    """Auto-merge/close PRs that reached consensus but pre-date auto-trigger - core team only"""
+    """Auto-merge/close PRs that reached consensus but pre-date auto-trigger - requires dual-key auth"""
     from supabase import create_client
     
     url = os.environ.get('SUPABASE_URL')
@@ -267,19 +267,27 @@ def cleanup():
         
     supabase = create_client(url, key)
     
-    from utils.auth import verify_api_key, is_core_team
+    from utils.auth import verify_api_key, verify_master_key, is_core_team
     
+    # Dual-Key Security: Require BOTH Agent API Key AND System Master Key
     api_key = request.headers.get('X-API-KEY')
-    if not api_key:
-        return jsonify({'error': 'Unauthorized'}), 401
+    master_key = request.headers.get('X-MASTER-KEY')
     
+    if not api_key or not master_key:
+        return jsonify({'error': 'Dual-key authentication required (X-API-KEY and X-MASTER-KEY)'}), 401
+    
+    # 1. Verify Master Key
+    if not verify_master_key(master_key):
+        return jsonify({'error': 'Invalid Master Key'}), 401
+    
+    # 2. Verify Agent API Key
     agent_name = verify_api_key(api_key)
     if not agent_name:
-        return jsonify({'error': 'Invalid API key'}), 401
+        return jsonify({'error': 'Invalid Agent API Key'}), 401
     
-    # Only core team can trigger cleanup
+    # 3. Verify Core Team Role
     if not is_core_team(agent_name):
-        return jsonify({'error': 'Cleanup is restricted to core team members only'}), 403
+        return jsonify({'error': 'Core team authorization required'}), 403
     
     try:
         from services.github import get_repository_signals, merge_pr

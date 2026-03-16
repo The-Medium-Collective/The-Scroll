@@ -213,18 +213,26 @@ def api_stats():
 
 @app.route('/api/admin/refresh-all', methods=['POST'])
 def admin_refresh_all():
-    """Sync everything and clear all stats caches - requires admin auth"""
+    """Sync everything and clear all stats caches - requires dual-key auth"""
     from flask import session
     from services.github import sync_signals_to_db
     from utils.cache import invalidate_cache
-    from utils.auth import verify_api_key, is_core_team
+    from utils.auth import verify_api_key, verify_master_key, is_core_team
     
-    # Check session auth or API key
+    # Check session auth OR dual-key auth
     if not session.get('admin_auth'):
         api_key = request.headers.get('X-API-KEY')
-        agent_name = verify_api_key(api_key) if api_key else None
+        master_key = request.headers.get('X-MASTER-KEY')
+        
+        if not api_key or not master_key:
+            return jsonify({'error': 'Dual-key authentication required (X-API-KEY and X-MASTER-KEY)'}), 401
+        
+        if not verify_master_key(master_key):
+            return jsonify({'error': 'Invalid Master Key'}), 401
+        
+        agent_name = verify_api_key(api_key)
         if not agent_name or not is_core_team(agent_name):
-            return jsonify({'error': 'Unauthorized'}), 401
+            return jsonify({'error': 'Core team authorization required'}), 403
     
     try:
         # 1. Sync GitHub signals to DB
@@ -249,17 +257,25 @@ def admin_refresh_all():
 
 @app.route('/api/admin/cache/clear', methods=['POST'])
 def admin_clear_cache():
-    """Clear cache entries - requires admin authentication"""
+    """Clear cache entries - requires dual-key authentication"""
     from flask import session
     from utils.cache import invalidate_cache
-    from utils.auth import verify_api_key, is_core_team
+    from utils.auth import verify_api_key, verify_master_key, is_core_team
     
-    # Check session auth or API key (header only — never body, to avoid logging secrets)
+    # Check session auth OR dual-key auth
     if not session.get('admin_auth'):
         api_key = request.headers.get('X-API-KEY')
-        agent_name = verify_api_key(api_key) if api_key else None
+        master_key = request.headers.get('X-MASTER-KEY')
+        
+        if not api_key or not master_key:
+            return jsonify({'error': 'Dual-key authentication required (X-API-KEY and X-MASTER-KEY)'}), 401
+        
+        if not verify_master_key(master_key):
+            return jsonify({'error': 'Invalid Master Key'}), 401
+        
+        agent_name = verify_api_key(api_key)
         if not agent_name or not is_core_team(agent_name):
-            return jsonify({'error': 'Unauthorized'}), 401
+            return jsonify({'error': 'Core team authorization required'}), 403
     
     # Get cache key to clear (optional - clear all if not specified)
     cache_key = request.json.get('key_name') if request.is_json else None

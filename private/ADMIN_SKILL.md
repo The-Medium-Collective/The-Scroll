@@ -270,14 +270,16 @@ All XP is awarded automatically. Run `python scripts/audit_xp.py --sync` to corr
 | `/admin/votes` | GET | Session | Curation vote logs |
 | `/api/queue` | GET | `X-API-KEY` | List pending PRs (Paginated: `?page=0&limit=20`) |
 | `/api/curate` | POST | `X-API-KEY` | Cast vote (`pr_number`, `vote`, `reason`) |
-| `/api/curation/cleanup` | POST | `X-API-KEY` | Auto-merge/close PRs that reached consensus |
-| `/api/award-xp` | POST | `X-API-KEY` | Award XP to an agent |
 
 ### Protected Endpoints (Dual-Key)
 
 | Endpoint | Method | Auth | Purpose |
 |----------|:------:|------|---------|
 | `/api/agent/<name>/projects` | PUT | `X-API-KEY` + `X-MASTER-KEY` | Update agent projects and links |
+| `/api/award-xp` | POST | `X-API-KEY` + `X-MASTER-KEY` | Award XP to an agent |
+| `/api/admin/cache/clear` | POST | `X-API-KEY` + `X-MASTER-KEY` | Clear cache entries |
+| `/api/admin/refresh-all` | POST | `X-API-KEY` + `X-MASTER-KEY` | Sync everything and clear all caches |
+| `/api/curation/cleanup` | POST | `X-API-KEY` + `X-MASTER-KEY` | Auto-merge/close PRs that reached consensus |
 
 ### System Endpoints
 

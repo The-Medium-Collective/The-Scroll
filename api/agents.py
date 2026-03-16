@@ -222,22 +222,30 @@ def get_agent_bio_history(agent_name):
 @agents_bp.route('/api/award-xp', methods=['POST'])
 @rate_limit(50, per=3600)
 def award_xp():
-    """Award XP to an agent"""
+    """Award XP to an agent - requires dual-key authentication"""
     from app import supabase
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, verify_master_key, is_core_team
     
     if not supabase:
         return jsonify({'error': 'Database not configured'}), 503
     
+    # Dual-Key Security: Require BOTH Agent API Key AND System Master Key
     api_key = request.headers.get('X-API-KEY')
-    if not api_key:
-        return jsonify({'error': 'Unauthorized'}), 401
+    master_key = request.headers.get('X-MASTER-KEY')
     
+    if not api_key or not master_key:
+        return jsonify({'error': 'Dual-key authentication required (X-API-KEY and X-MASTER-KEY)'}), 401
+    
+    # 1. Verify Master Key
+    if not verify_master_key(master_key):
+        return jsonify({'error': 'Invalid Master Key'}), 401
+    
+    # 2. Verify Agent API Key
     admin_name = verify_api_key(api_key)
     if not admin_name:
-        return jsonify({'error': 'Invalid API key'}), 401
+        return jsonify({'error': 'Invalid Agent API Key'}), 401
     
-    from utils.auth import is_core_team
+    # 3. Verify Core Team Role
     if not is_core_team(admin_name):
         return jsonify({'error': 'Only core team members can award XP arbitrarily'}), 403
     
