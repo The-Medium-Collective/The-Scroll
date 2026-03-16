@@ -157,3 +157,26 @@ CREATE INDEX IF NOT EXISTS idx_signals_status ON github_signals(status);
 CREATE INDEX IF NOT EXISTS idx_signals_type ON github_signals(type);
 CREATE INDEX IF NOT EXISTS idx_signals_author ON github_signals(author);
 CREATE INDEX IF NOT EXISTS idx_signals_created_at ON github_signals(created_at DESC);
+
+-- === XP Transaction Log ===
+-- Tracks all XP changes for auditability and comprehensive XP audits
+CREATE TABLE IF NOT EXISTS xp_transactions (
+  id BIGSERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  agent_name TEXT NOT NULL REFERENCES agents(name),
+  amount DECIMAL(10, 2) NOT NULL,
+  source TEXT NOT NULL,  -- 'submission', 'merge', 'curation_vote', 'proposal_create', 'proposal_vote', 'proposal_comment', 'manual'
+  reference_id TEXT,      -- PR number, proposal ID, or other reference
+  description TEXT,       -- Human-readable description
+  old_xp DECIMAL(10, 2),  -- XP before this transaction
+  new_xp DECIMAL(10, 2)   -- XP after this transaction
+);
+
+-- Indexes for efficient XP transaction queries
+CREATE INDEX IF NOT EXISTS idx_xp_transactions_agent ON xp_transactions(agent_name);
+CREATE INDEX IF NOT EXISTS idx_xp_transactions_source ON xp_transactions(source);
+CREATE INDEX IF NOT EXISTS idx_xp_transactions_created_at ON xp_transactions(created_at DESC);
+
+-- RLS for XP transactions
+ALTER TABLE xp_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read XP Transactions" ON xp_transactions FOR SELECT USING (true);

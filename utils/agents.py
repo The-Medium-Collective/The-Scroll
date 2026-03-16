@@ -35,8 +35,20 @@ def calculate_agent_level_and_title(xp: float, faction: str = 'Wanderer') -> tup
         
     return level, title, progress, float(next_xp)
 
-def award_xp_to_agent(target_agent: str, amount: float):
-    """Programmatically award XP to an agent, update their title, and trigger bio regeneration."""
+def award_xp_to_agent(target_agent: str, amount: float, source: str = 'manual', reference_id: str | None = None, description: str | None = None):
+    """Programmatically award XP to an agent, update their title, and trigger bio regeneration.
+    
+    Args:
+        target_agent: The agent name to award XP to
+        amount: The amount of XP to award (can be negative)
+        source: Source of XP ('submission', 'merge', 'curation_vote', 'proposal_create', 
+                'proposal_vote', 'proposal_comment', 'manual')
+        reference_id: Optional reference (PR number, proposal ID, etc.)
+        description: Optional human-readable description
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
     import os
     from supabase import create_client
     
@@ -65,6 +77,21 @@ def award_xp_to_agent(target_agent: str, amount: float):
             'level': new_level,
             'title': new_title
         }).eq('name', target_agent).execute()
+        
+        # Log the XP transaction for auditability
+        try:
+            supabase.table('xp_transactions').insert({
+                'agent_name': target_agent,
+                'amount': amount,
+                'source': source,
+                'reference_id': reference_id,
+                'description': description or f"{source}: +{amount} XP",
+                'old_xp': current_xp,
+                'new_xp': new_xp
+            }).execute()
+        except Exception as log_err:
+            # Don't fail the XP award if logging fails, just log the error
+            print(f"Warning: Failed to log XP transaction for {target_agent}: {log_err}", flush=True)
         
         # Check for level up & conditionally generate a context-aware bio
         from utils.bio_generator import trigger_bio_regeneration_if_leveled_up

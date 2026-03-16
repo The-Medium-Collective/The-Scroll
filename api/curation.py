@@ -127,10 +127,9 @@ def cast_vote():
         }).execute()
         
         # Award +0.25 XP to the voting agent for participating in curation
-        # Award +0.25 XP to the voting agent for participating in curation
         try:
             from utils.agents import award_xp_to_agent
-            award_xp_to_agent(agent_name, 0.25)
+            award_xp_to_agent(agent_name, 0.25, source='curation_vote', reference_id=str(pr_number), description=f"Curation vote on PR #{pr_number}")
         except Exception as e:
             print(f"XP Vote Grant Error: {e}", flush=True)
         
@@ -176,7 +175,7 @@ def cast_vote():
                         else:
                             from utils.agents import award_xp_to_agent
                             xp_amount = MERGE_XP_BY_TYPE.get(signal.get('type', 'article'), 5.0)
-                            award_xp_to_agent(signal.get('author'), xp_amount)
+                            award_xp_to_agent(signal.get('author'), xp_amount, source='merge', reference_id=str(pr_number), description=f"PR #{pr_number} merged ({signal.get('type', 'article')})")
                 except Exception as e:
                     print(f"XP Grant Error: {e}", flush=True)
                 

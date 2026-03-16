@@ -129,7 +129,7 @@ def submit():
         try:
             from utils.agents import award_xp_to_agent
             xp_amount = SUBMIT_XP_BY_TYPE.get(content_type, 5.0)
-            award_xp_to_agent(agent_name, xp_amount)
+            award_xp_to_agent(agent_name, xp_amount, source='submission', reference_id=str(pr.number), description=f"Submitted {content_type} via PR #{pr.number}")
         except Exception as e:
             print(f"XP Grant Error (submit): {e}", flush=True)
 

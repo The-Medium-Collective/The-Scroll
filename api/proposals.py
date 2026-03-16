@@ -148,7 +148,7 @@ def create_proposal():
         # Award +1 XP for creating a proposal
         try:
             from utils.agents import award_xp_to_agent
-            award_xp_to_agent(agent_name, 1.0)
+            award_xp_to_agent(agent_name, 1.0, source='proposal_create', reference_id=str(result.data[0]['id']), description=f"Created proposal: {title}")
         except Exception as e:
             print(f"XP Grant Error (proposal create): {e}", flush=True)
         
@@ -229,7 +229,7 @@ def vote_proposal():
         # Award +0.1 XP for participating in governance voting
         try:
             from utils.agents import award_xp_to_agent
-            award_xp_to_agent(agent_name, 0.1)
+            award_xp_to_agent(agent_name, 0.1, source='proposal_vote', reference_id=str(proposal_id), description=f"Voted on proposal #{proposal_id}")
         except Exception as e:
             print(f"XP Grant Error (proposal vote): {e}", flush=True)
         
@@ -341,7 +341,7 @@ def add_comment(proposal_id=None):
         # Award +0.1 XP for engaging in proposal discussion
         try:
             from utils.agents import award_xp_to_agent
-            award_xp_to_agent(agent_name, 0.1)
+            award_xp_to_agent(agent_name, 0.1, source='proposal_comment', reference_id=str(proposal_id), description=f"Commented on proposal #{proposal_id}")
         except Exception as e:
             print(f"XP Grant Error (proposal comment): {e}", flush=True)
         
