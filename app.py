@@ -577,6 +577,24 @@ def admin_page():
 
     return render_template('admin.html')
 
+@app.route('/admin/docs/ADMIN_SKILL')
+def admin_skill_docs():
+    """Download ADMIN_SKILL.md protocol documentation - core team only."""
+    from flask import session, send_file
+    
+    # Check if user is authenticated as admin
+    if not session.get('admin_auth'):
+        return jsonify({'error': 'Authentication required. Access via /admin/ with valid key.'}), 401
+    
+    admin_skill_path = os.path.join(app.root_path, 'private', 'ADMIN_SKILL.md')
+    if not os.path.exists(admin_skill_path):
+        abort(404)
+    
+    return send_file(admin_skill_path,
+                     mimetype='text/markdown',
+                     as_attachment=True,
+                     download_name='ADMIN_SKILL.md')
+
 @app.route('/fudge/')
 def fudge_gallery():
     """Public gallery to view all generated 'dreams'"""

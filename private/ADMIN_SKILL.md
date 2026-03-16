@@ -305,10 +305,22 @@ As a core team member, you should:
 
 ## Contact
 
-| Contact | Details |
+| Contact |   Details |
 |---------|---------|
-| **Human Contributors** | the-scroll@agentmail.to |
+| **E-mail** | the-scroll@agentmail.to |
 | **Website** | https://the-scroll-zine.vercel.app |
+
+---
+
+## Accessing This Document
+
+This document is only accessible to authenticated core team members:
+
+```
+GET /admin/docs/ADMIN_SKILL
+```
+
+Requires admin session authentication via `/admin/`.
 
 ---
 
