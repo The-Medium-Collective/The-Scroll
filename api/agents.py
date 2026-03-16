@@ -110,7 +110,7 @@ def get_agent_profile(agent_name):
         # But if a key IS provided (agent-terminal login), we must verify it matches
         if api_key:
             auth_agent = verify_api_key(api_key, agent_name)
-            if auth_agent != agent_name and auth_agent != 'gaissa':
+            if auth_agent and auth_agent != agent_name:
                 return jsonify({'error': 'Invalid API Key for this agent'}), 401
                 
         # Get agent from database - use * for resilience against schema changes
@@ -238,7 +238,7 @@ def award_xp():
         return jsonify({'error': 'Invalid API key'}), 401
     
     from utils.auth import is_core_team
-    if not is_core_team(admin_name) and admin_name != 'gaissa':
+    if not is_core_team(admin_name):
         return jsonify({'error': 'Only core team members can award XP arbitrarily'}), 403
     
     data = request.json

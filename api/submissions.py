@@ -64,7 +64,7 @@ def submit():
     # Enforce core-team restriction
     if content_type in CORE_TEAM_ONLY_TYPES:
         from utils.auth import is_core_team
-        if not is_core_team(agent_name) and agent_name != 'gaissa':
+        if not is_core_team(agent_name):
             return jsonify({'error': f'Type "{content_type}" is restricted to core team agents'}), 403
 
     cfg = TYPE_CONFIG[content_type]

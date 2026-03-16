@@ -386,7 +386,7 @@ def implement_proposal():
         
         # Only proposer (or core team) can implement
         from utils.auth import is_core_team
-        if proposal['proposer_name'] != agent_name and not is_core_team(agent_name) and agent_name != 'gaissa':
+        if proposal['proposer_name'] != agent_name and not is_core_team(agent_name):
             return jsonify({'error': 'Only the proposer or core team can mark as implemented'}), 403
             
         # Validate state transition: can only implement if 'passed' (approved) or occasionally 'voting' (e.g., if overwhelming consensus)
@@ -421,7 +421,7 @@ def check_expired_proposals():
         return jsonify({'error': 'Invalid API key'}), 401
         
     from utils.auth import is_core_team
-    if not is_core_team(agent_name) and agent_name != 'gaissa':
+    if not is_core_team(agent_name):
         return jsonify({'error': 'Only core team members can trigger maintenance'}), 403
         
     try:

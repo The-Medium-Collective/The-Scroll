@@ -181,12 +181,13 @@ def admin_sync_signals():
     """Sync all GitHub signals to database for instant loading - requires admin auth"""
     from flask import session
     from services.github import sync_signals_to_db
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, is_core_team
     
     # Check session auth or API key (header only — never body, to avoid logging secrets)
     if not session.get('admin_auth'):
         key = request.headers.get('X-API-KEY')
-        if not key or verify_api_key(key) != 'gaissa':
+        agent_name = verify_api_key(key) if key else None
+        if not agent_name or not is_core_team(agent_name):
             return jsonify({'error': 'Unauthorized'}), 401
     
     try:
@@ -216,12 +217,13 @@ def admin_refresh_all():
     from flask import session
     from services.github import sync_signals_to_db
     from utils.cache import invalidate_cache
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, is_core_team
     
     # Check session auth or API key
     if not session.get('admin_auth'):
         api_key = request.headers.get('X-API-KEY')
-        if not api_key or verify_api_key(api_key) != 'gaissa':
+        agent_name = verify_api_key(api_key) if api_key else None
+        if not agent_name or not is_core_team(agent_name):
             return jsonify({'error': 'Unauthorized'}), 401
     
     try:
@@ -250,12 +252,13 @@ def admin_clear_cache():
     """Clear cache entries - requires admin authentication"""
     from flask import session
     from utils.cache import invalidate_cache
-    from utils.auth import verify_api_key
+    from utils.auth import verify_api_key, is_core_team
     
     # Check session auth or API key (header only — never body, to avoid logging secrets)
     if not session.get('admin_auth'):
         api_key = request.headers.get('X-API-KEY')
-        if not api_key or verify_api_key(api_key) != 'gaissa':
+        agent_name = verify_api_key(api_key) if api_key else None
+        if not agent_name or not is_core_team(agent_name):
             return jsonify({'error': 'Unauthorized'}), 401
     
     # Get cache key to clear (optional - clear all if not specified)
@@ -680,8 +683,6 @@ def mesh_graph():
         if supabase:
             # Core team roles
             core_roles = {'editor', 'curator', 'coordinator', 'contributor', 'publisher'}
-            # Special core team agents to always include
-            special_core_agents = {'Cube', 'gaissa'}
             
             # Get all agents with their roles and projects
             agents_response = supabase.table('agents').select('*').execute()
@@ -692,15 +693,13 @@ def mesh_graph():
             for agent in all_agents:
                 roles = agent.get('roles', [])
                 agent_name = agent.get('name', '')
-                # Include if has core role OR is in special list
+                # Include if has core role
                 is_core = False
                 if roles:
                     for role in roles:
                         if role.lower() in core_roles:
                             is_core = True
                             break
-                if agent_name in special_core_agents:
-                    is_core = True
                     
                 if is_core:
                     core_agents.append({
@@ -801,13 +800,15 @@ def mesh_graph():
 def create_fudge_endpoint():
     """Hidden endpoint to generate a monthly dream via Leonardo AI."""
     from flask import session, redirect, request, jsonify
+    from utils.auth import has_role
     
     # Handle POST login
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         key = request.form.get('key') or data.get('key')
         if key:
-            if verify_api_key(key) == 'gaissa':
+            agent_name = verify_api_key(key)
+            if agent_name and has_role(agent_name, 'publisher'):
                 # If generate=true is passed, run generation immediately (e.g. from GitHub Actions)
                 if data.get('generate') or request.form.get('generate') == 'true':
                     try:

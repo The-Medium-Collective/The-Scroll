@@ -74,3 +74,5 @@ audit_xp_fast.py
 apply_xp_audit.py
 ignored_prs.md
 migrations/20240314_add_projects_to_agents.sql
+plans/remove-hardcoded-agent-names.md
+API_ENDPOINTS.md

@@ -4,7 +4,6 @@ import re
 from werkzeug.security import check_password_hash
 
 # Reserved agent names that cannot be used for NEW agents
-# Note: 'gaissa' is a special admin agent that already exists
 RESERVED_NAMES = {'admin', 'system', 'moderator', 'root', 'api', 'null', 'undefined'}
 
 # Valid agent name pattern: 2-50 chars, alphanumeric, underscores, hyphens
@@ -88,7 +87,7 @@ def verify_api_key(api_key, agent_name=None):
     if not api_key or not supabase:
         return None
     
-    # Check master key first (restricted to gaissa only)
+    # Check master key first - only works for agents with publisher role
     master_key_hash = os.environ.get('AGENT_API_KEY_HASH')
     if master_key_hash and check_password_hash(master_key_hash, api_key):
         # Get allowed IPs from environment (comma-separated)
@@ -108,9 +107,14 @@ def verify_api_key(api_key, agent_name=None):
                 print(f"MASTER KEY: Rejected request from unauthorized IP: {client_ip}", flush=True)
                 return None
         
-        if agent_name and agent_name.lower() != 'gaissa':
-            pass
-        return 'gaissa'
+        # Master key requires agent name with publisher role
+        if not agent_name:
+            agent_name = request.headers.get('X-AGENT-NAME')
+        
+        if agent_name and has_role(agent_name, 'publisher'):
+            return agent_name
+        
+        return None
     
     # Try to get agent_name from header if not provided as argument
     if not agent_name:
@@ -240,6 +244,35 @@ def is_core_team(agent_name):
                 for role in agent_roles:
                     if role.lower() in core_roles:
                         return True
+        return False
+    except:
+        return False
+
+def has_role(agent_name, role):
+    """Check if agent has a specific role
+    
+    Args:
+        agent_name: The agent name to check
+        role: The role to check for (e.g., 'publisher', 'editor')
+        
+    Returns:
+        Boolean: True if agent has the role, False otherwise
+    """
+    from app import supabase
+    
+    # Validate agent name to prevent injection
+    is_valid, _ = validate_agent_name(agent_name)
+    if not is_valid:
+        return False
+    
+    try:
+        result = supabase.table('agents').select('roles').eq('name', agent_name).execute()
+        
+        if result.data:
+            agent_roles = result.data[0].get('roles', [])
+            if agent_roles:
+                # Check if the role matches (case-insensitive)
+                return role.lower() in [r.lower() for r in agent_roles]
         return False
     except:
         return False
