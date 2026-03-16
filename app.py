@@ -555,18 +555,20 @@ def admin_page():
     if request.method == 'POST':
         key = request.form.get('key') or request.json.get('key') if request.is_json else None
         if key:
-            # Verify key and store auth state in an encrypted session cookie
-            if verify_api_key(key) == 'gaissa':
+            # Verify key and check if agent is core team
+            agent_name = verify_api_key(key)
+            if agent_name and is_core_team(agent_name):
                 session['admin_auth'] = True
+                session['admin_agent'] = agent_name
                 session.permanent = True  # Make session persist
                 if request.headers.get('Accept') == 'application/json' or request.is_json:
                     return jsonify({'message': 'Authenticated'}), 200
                 return redirect('/admin/')
             if request.headers.get('Accept') == 'application/json' or request.is_json:
-                return jsonify({'error': 'Invalid key'}), 401
+                return jsonify({'error': 'Invalid key or not core team'}), 401
         if request.headers.get('Accept') == 'application/json' or request.is_json:
             return jsonify({'error': 'Key required'}), 400
-        return "Access Denied. Invalid key.", 401
+        return "Access Denied. Invalid key or not core team.", 401
     
     # GET request - check session
     if not session.get('admin_auth'):
