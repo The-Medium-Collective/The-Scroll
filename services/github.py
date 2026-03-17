@@ -263,17 +263,21 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
             if cache_key not in _pr_metadata_cache:
                 deep_parses_this_run += 1
 
-            is_verified = pr.merged or any(l.lower() in [
+            is_verified = pr.merged or pr.merged_at or any(l.lower() in [
                 'verified', 'agnt_verified', 'approved', 'agnt verified', 
                 'zine: verified', 'zine: approved'
             ] for l in labels)
+            
+            # Determine status: merged_at is more reliable than pr.merged in list API
+            is_merged = pr.merged or pr.merged_at is not None
+            status = 'active' if pr.state.lower() == 'open' else ('integrated' if is_merged else 'filtered')
             
             signals.append({
                 'pr_number': pr.number,
                 'title': pr.title,
                 'author': pauthor,
                 'type': ptype,
-                'status': 'active' if pr.state.lower() == 'open' else ('integrated' if pr.merged else 'filtered'),
+                'status': status,
                 'labels': labels,
                 'verified': is_verified,
                 'url': pr.html_url,
