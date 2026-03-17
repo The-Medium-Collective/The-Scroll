@@ -191,6 +191,10 @@ def get_repo_totals():
         open_result = g.search_issues(f"{base_query} is:open", sort='created')
         open_count = open_result.totalCount
         
+        open_ignored = g.search_issues(f'{base_query} is:open label:"Zine: Ignore"', sort='created')
+        open_ignored_count = open_ignored.totalCount
+        active_count = open_count - open_ignored_count
+        
         closed_not_merged = g.search_issues(f"{base_query} is:closed -is:merged", sort='created')
         closed_not_merged_count = closed_not_merged.totalCount
         
@@ -202,7 +206,7 @@ def get_repo_totals():
         return {
             'integrated': integrated_count,
             'published': published_count,
-            'active': open_count,
+            'active': active_count,
             'filtered': filtered_count
         }
     except Exception as e:
