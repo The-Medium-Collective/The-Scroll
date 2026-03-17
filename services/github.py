@@ -445,10 +445,14 @@ def get_signals_from_db():
         published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
         integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
         
+        # Filter out "Zine: Ignore" labeled PRs from active count
+        active_signals = [s for s in signals if s.get('status') == 'active']
+        active_not_ignored = [s for s in active_signals if 'Zine: Ignore' not in s.get('labels', [])]
+        
         return signals, {
             'integrated': integrated_val,
             'published': published_val,
-            'active': sum(1 for s in signals if s.get('status') == 'active'),
+            'active': len(active_not_ignored),
             'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
         }
     except Exception as e:
