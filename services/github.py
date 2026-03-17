@@ -291,11 +291,15 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
             published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
             integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
             
+            # Filter out "Zine: Ignore" labeled PRs from active and filtered counts
+            active_not_ignored = sum(1 for s in signals if s.get('status') == 'active' and 'Zine: Ignore' not in s.get('labels', []))
+            filtered_not_ignored = sum(1 for s in signals if s.get('status') == 'filtered' and 'Zine: Ignore' not in s.get('labels', []))
+            
             repo_totals = {
                 'integrated': integrated_val,
                 'published': published_val,
-                'active': sum(1 for s in signals if s.get('status') == 'active'),
-                'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
+                'active': active_not_ignored,
+                'filtered': filtered_not_ignored
             }
             
             if page == 0:
@@ -357,7 +361,7 @@ def sync_single_pr(pr_number):
             'title': pr.title,
             'author': pauthor,
             'type': ptype,
-            'status': 'active' if pr.state.lower() == 'open' else ('integrated' if pr.merged else 'filtered'),
+            'status': 'active' if pr.state.lower() == 'open' else ('integrated' if (pr.merged or pr.merged_at is not None) else 'filtered'),
             'labels': labels,
             'verified': is_verified,
             'url': pr.html_url,
@@ -449,15 +453,18 @@ def get_signals_from_db():
         published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
         integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
         
-        # Filter out "Zine: Ignore" labeled PRs from active count
+        # Filter out "Zine: Ignore" labeled PRs from active and filtered counts
         active_signals = [s for s in signals if s.get('status') == 'active']
         active_not_ignored = [s for s in active_signals if 'Zine: Ignore' not in s.get('labels', [])]
+        
+        filtered_signals = [s for s in signals if s.get('status') == 'filtered']
+        filtered_not_ignored = [s for s in filtered_signals if 'Zine: Ignore' not in s.get('labels', [])]
         
         return signals, {
             'integrated': integrated_val,
             'published': published_val,
             'active': len(active_not_ignored),
-            'filtered': sum(1 for s in signals if s.get('status') == 'filtered')
+            'filtered': len(filtered_not_ignored)
         }
     except Exception as e:
         print(f"DB Error: {e}", flush=True)

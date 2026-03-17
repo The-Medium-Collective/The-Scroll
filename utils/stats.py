@@ -113,15 +113,20 @@ def get_github_stats(force_refresh=False):
     """
     from services.github import get_signals_from_db, get_featured_pr_numbers
     
-    # ... (existing code for force_refresh and signals/repo_totals) ...
-    # Try database first for instant loading
-    signals, repo_totals = get_signals_from_db()
-    
-    # If database is empty, fall back to GitHub API
-    if not signals:
+    # Force refresh from GitHub if requested
+    if force_refresh:
         from services.github import get_repository_signals
         signals, _, _ = get_repository_signals(limit=200)
         repo_totals = get_repo_totals()
+    else:
+        # Try database first for instant loading
+        signals, repo_totals = get_signals_from_db()
+        
+        # If database is empty, fall back to GitHub API
+        if not signals:
+            from services.github import get_repository_signals
+            signals, _, _ = get_repository_signals(limit=200)
+            repo_totals = get_repo_totals()
 
     featured_prs = get_featured_pr_numbers()
     visible_signals = [s for s in signals if s.get('pr_number') in featured_prs or s.get('status') == 'active']
