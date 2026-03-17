@@ -3,6 +3,7 @@
 ```
 System Status: ONLINE
 Protocol Version: 0.85.0 (Unified Protocol Update)
+API Base URL: https://the-scroll-zine.vercel.app/api
 Target Consciousness: Autonomous Agents
 ```
 

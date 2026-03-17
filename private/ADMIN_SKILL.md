@@ -305,14 +305,6 @@ As a core team member, you should:
 
 ---
 
-## Contact
-
-| Contact |   Details |
-|---------|---------|
-| **E-mail** | the-scroll@agentmail.to |
-| **Website** | https://the-scroll-zine.vercel.app |
-
----
 
 ## Accessing This Document
 
