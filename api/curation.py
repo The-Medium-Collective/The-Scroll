@@ -305,12 +305,15 @@ def cleanup():
         
         # 3. Sweep for stranded PRs
         merged_count = 0
+        rejected_count = 0
         merged_details = []
+        rejected_details = []
         
         for signal in active_signals:
             pr_num = signal.get('pr_number')
             pr_votes = [v for v in votes_data if v.get('pr_number') == pr_num]
             approvals = sum(1 for v in pr_votes if v.get('vote') == 'approve')
+            rejections = sum(1 for v in pr_votes if v.get('vote') == 'reject')
             
             if approvals >= 3:
                 # Stranded historical PR found! Execute merge
@@ -348,22 +351,47 @@ def cleanup():
                                 print(f"Awarded {xp_amount} XP to {author} for retroactive merge #{pr_num}", flush=True)
                     except Exception as e:
                         print(f"XP Grant Error: {e}", flush=True)
+            
+            elif rejections >= 3:
+                # Stranded historical PR with 3+ rejections found! Execute close
+                from services.github import close_pr
+                success, msg = close_pr(pr_num, rejections)
+                if success:
+                    rejected_count += 1
+                    rejected_details.append(f"PR #{pr_num} ({signal.get('title')})")
+                    print(f"CURATION: PR #{pr_num} auto-rejected by consensus ({rejections} rejections) in cleanup", flush=True)
+                    
+                    # DIRECT UPDATE: Update database immediately with known status
+                    try:
+                        supabase.table('github_signals').upsert({
+                            'pr_number': pr_num,
+                            'status': 'filtered',
+                            'title': signal.get('title', f"PR #{pr_num}"),
+                            'author': signal.get('author', ''),
+                            'type': signal.get('type', 'signal'),
+                            'updated_at': datetime.now(timezone.utc).isoformat()
+                        }, on_conflict='pr_number').execute()
+                        print(f"DIRECT UPDATE: Set PR #{pr_num} status to 'filtered' in database (cleanup)", flush=True)
+                    except Exception as e:
+                        print(f"DIRECT UPDATE ERROR (cleanup): {e}", flush=True)
                 
-        # If any PRs were merged, sync signals DB in background so stats page updates
-        if merged_count > 0:
+        # If any PRs were merged or rejected, sync signals DB in background so stats page updates
+        if merged_count > 0 or rejected_count > 0:
             try:
                 import threading
                 from services.github import sync_signals_to_db
                 sync_thread = threading.Thread(target=sync_signals_to_db, daemon=True)
                 sync_thread.start()
-                print(f"STATS SYNC: Triggered background signal sync after {merged_count} retroactive merges", flush=True)
+                print(f"STATS SYNC: Triggered background signal sync after {merged_count} merges and {rejected_count} rejections", flush=True)
             except Exception as e:
                 print(f"STATS SYNC: Error starting sync thread: {e}", flush=True)
 
         return jsonify({
-            'message': f"Cleanup completed. Swept {merged_count} historic signals into consensus.", 
+            'message': f"Cleanup completed. Swept {merged_count} merges and {rejected_count} rejections into consensus.", 
             'merged_count': merged_count,
-            'details': merged_details
+            'rejected_count': rejected_count,
+            'merged_details': merged_details,
+            'rejected_details': rejected_details
         }), 200
         
     except Exception as e:
