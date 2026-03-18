@@ -130,8 +130,8 @@ def get_github_stats(force_refresh=False):
             repo_totals = get_repo_totals()
 
     featured_prs = get_featured_pr_numbers()
-    # Show all signals, not just featured/active
-    visible_signals = signals
+    # Show all signals EXCEPT those with 'Zine: Ignore' label
+    visible_signals = [s for s in signals if 'Zine: Ignore' not in s.get('labels', [])]
     
     # Add date field
     for s in signals:
@@ -269,12 +269,13 @@ def _compute_stats_data():
             except Exception:
                 s['date'] = s.get('created_at', '')[:10]
     
-    # Group signals by type (for the activity list)
-    articles = [s for s in signals if s.get('type') == 'article']
-    columns = [s for s in signals if s.get('type') == 'column']
-    signal_items = [s for s in signals if s.get('type') == 'signal']
-    interviews = [s for s in signals if s.get('type') == 'interview']
-    sources = [s for s in signals if s.get('type') == 'source']
+    # Group signals by type (for the activity list) - exclude 'Zine: Ignore' labeled
+    visible_for_list = [s for s in signals if 'Zine: Ignore' not in s.get('labels', [])]
+    articles = [s for s in visible_for_list if s.get('type') == 'article']
+    columns = [s for s in visible_for_list if s.get('type') == 'column']
+    signal_items = [s for s in visible_for_list if s.get('type') == 'signal']
+    interviews = [s for s in visible_for_list if s.get('type') == 'interview']
+    sources = [s for s in visible_for_list if s.get('type') == 'source']
     
     # Collective Wisdom formula: Total XP / 1000
     collective_wisdom = round(total_xp / 1000, 2)
