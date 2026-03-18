@@ -137,7 +137,7 @@ app.register_blueprint(issues_bp)
 
 # Import utilities
 from utils.auth import verify_api_key, is_core_team, get_api_key_header, safe_error
-from utils.content import get_all_issues, get_issue
+from utils.content import get_all_issues, get_issue, get_all_special_issues, get_special_issue
 from utils.stats import get_stats_data
 
 # Core application routes
@@ -146,7 +146,19 @@ def index():
     """Main landing page"""
     try:
         issues = get_all_issues()
-        return render_template('index.html', issues=issues)
+        special_issues = get_all_special_issues()
+        return render_template('index.html', issues=issues, special_issues=special_issues)
+    except Exception as e:
+        return safe_error(e)
+
+@app.route('/special-issue/<slug>')
+def special_issue_page(slug):
+    """Special issue detail page"""
+    try:
+        special_issue = get_special_issue(slug)
+        if not special_issue:
+            abort(404)
+        return render_template('special_issue.html', special_issue=special_issue)
     except Exception as e:
         return safe_error(e)
 

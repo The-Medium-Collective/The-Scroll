@@ -1,18 +1,85 @@
 {% extends 'base.html' %}
 
+{% block title %}The Scroll - ZINE{% endblock %}
+
+{% block extra_body %}
+<script>
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName + '-tab').classList.remove('hidden');
+        document.querySelector('.tab-btn[data-tab="' + tabName + '"]').classList.add('active');
+    }
+</script>
+{% endblock %}
+
 {% block content %}
 <section class="issues-list">
-    <div class="grid">
-        {% for issue in issues %}
-        <article class="issue-card">
-            <div class="card-content">
-                <span class="meta">Vol {{ issue.volume }}, Issue {{ issue.issue }} — {{ issue.date }}</span>
-                <h3><a href="{{ url_for('issue_page', filename=issue.filename) }}">{{ issue.title }}</a></h3>
-                <p class="description">{{ issue.description }}</p>
-                <a href="{{ url_for('issue_page', filename=issue.filename) }}" class="read-more">Read Scroll &rarr;</a>
-            </div>
-        </article>
-        {% endfor %}
+    <div class="section-header" style="margin-bottom: 2rem;">
+        <h2>The Scroll</h2>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tabs"
+        style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+        <button class="tab-btn active" data-tab="issues" onclick="showTab('issues')"
+            style="background: none; border: none; color: var(--accent-color); font-size: 1.1rem; cursor: pointer; padding: 0.5rem 1rem; border-bottom: 2px solid var(--accent-color);">Issues</button>
+        <button class="tab-btn" data-tab="special" onclick="showTab('special')"
+            style="background: none; border: none; color: var(--text-color); opacity: 0.7; font-size: 1.1rem; cursor: pointer; padding: 0.5rem 1rem;">Special
+            Issues</button>
+    </div>
+
+    <!-- Issues Tab -->
+    <div id="issues-tab" class="tab-content">
+        <div class="grid">
+            {% for issue in issues %}
+            <article class="issue-card">
+                <div class="card-content">
+                    <span class="meta">Vol {{ issue.volume }}, Issue {{ issue.issue }} — {{ issue.date }}</span>
+                    <h3><a href="{{ url_for('issue_page', filename=issue.filename) }}">{{ issue.title }}</a></h3>
+                    <p class="description">{{ issue.description }}</p>
+                    <a href="{{ url_for('issue_page', filename=issue.filename) }}" class="read-more">Read Scroll
+                        &rarr;</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Special Issues Tab -->
+    <div id="special-tab" class="tab-content hidden">
+        <div class="grid">
+            {% if special_issues %}
+            {% for si in special_issues %}
+            <article class="issue-card" style="border-left: 4px solid #ff00ff;">
+                <div class="card-content">
+                    {% if si.cover %}
+                    <div style="margin-bottom: 1rem;">
+                        <img src="{{ si.cover }}" alt="{{ si.title }}"
+                            style="max-width: 100%; height: auto; border: 1px solid var(--border-color);">
+                    </div>
+                    {% endif %}
+                    <span class="meta" style="color: #ff00ff;">
+                        {% if si.season %}{{ si.season }}{% else %}SPECIAL ISSUE{% endif %}
+                        {% if si.issue %} #{{ si.issue }}{% endif %}
+                    </span>
+                    <h3><a href="{{ url_for('special_issue_page', slug=si.slug) }}" style="color: #ff00ff;">{{ si.title
+                            }}</a></h3>
+                    {% if si.description %}
+                    <p class="description">{{ si.description }}</p>
+                    {% endif %}
+                    {% if si.date %}
+                    <p class="meta" style="font-size: 0.8rem; opacity: 0.6;">{{ si.date }}</p>
+                    {% endif %}
+                    <a href="{{ url_for('special_issue_page', slug=si.slug) }}" class="read-more"
+                        style="color: #ff00ff;">Read &rarr;</a>
+                </div>
+            </article>
+            {% endfor %}
+            {% else %}
+            <p style="opacity: 0.6; font-style: italic;">No special issues available yet.</p>
+            {% endif %}
+        </div>
     </div>
 </section>
 {% endblock %}

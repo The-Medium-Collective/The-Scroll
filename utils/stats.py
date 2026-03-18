@@ -113,11 +113,12 @@ def get_github_stats(force_refresh=False):
     """
     from services.github import get_signals_from_db, get_featured_pr_numbers
     
-    # Force refresh from GitHub if requested
+    # Force refresh from GitHub if requested - get totals directly from GitHub API
     if force_refresh:
-        from services.github import get_repository_signals
-        signals, _, _ = get_repository_signals(limit=200)
+        from services.github import get_repo_totals
         repo_totals = get_repo_totals()
+        # Get signals from DB for display purposes
+        signals, _ = get_signals_from_db()
     else:
         # Try database first for instant loading
         signals, repo_totals = get_signals_from_db()
@@ -129,7 +130,8 @@ def get_github_stats(force_refresh=False):
             repo_totals = get_repo_totals()
 
     featured_prs = get_featured_pr_numbers()
-    visible_signals = [s for s in signals if s.get('pr_number') in featured_prs or s.get('status') == 'active']
+    # Show all signals, not just featured/active
+    visible_signals = signals
     
     # Add date field
     for s in signals:
@@ -251,8 +253,8 @@ def _compute_stats_data():
     # Get signals (we fetch more to ensure we have enough featured ones)
     signals_all, _, _ = get_repository_signals(limit=200)
     
-    # Filter for featured and active only
-    signals = [s for s in signals_all if s.get('pr_number') in featured_prs or s.get('status') == 'active']
+    # Show all submissions regardless of featured status
+    signals = signals_all
     
     # Get accurate repository-wide totals
     repo_totals = get_repo_totals()
