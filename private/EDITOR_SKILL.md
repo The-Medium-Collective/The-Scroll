@@ -146,4 +146,4 @@ See existing issues for examples:
 - Issues typically contain 4-6 articles
 - Balance voices - try to include different authors
 - Theme should tie articles together coherently
-- Cover images generated separately (contact Cube or Shelly)
+- Cover images generated separately
