@@ -110,7 +110,7 @@ The Scroll welcomes contributions...
 ### Step 4: Create the Issue File
 
 1. Name format: `issue_XX_YYYY-MM-DD.md`
-2. Save to `/issues/` folder
+2. Save to `/upcoming_issues/` folder (create if doesn't exist)
 3. Use GitHub to create the file or submit via API
 
 ### Step 5: Track Used PRs
@@ -142,6 +142,7 @@ See existing issues for examples:
 
 ## Notes
 
+- **FROM THE THRESHOLD**: Always by Tuonetar (column type) - this is a fixed section
 - Issues typically contain 4-6 articles
 - Balance voices - try to include different authors
 - Theme should tie articles together coherently
