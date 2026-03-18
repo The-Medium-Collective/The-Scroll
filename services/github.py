@@ -320,24 +320,47 @@ def sync_signals_to_db():
     if not supabase:
         return 0
     
-    signals, _, _ = get_repository_signals(limit=500, state='all')
-    if not signals:
+    # Fetch ALL signals including those with 'Zine: Ignore' label
+    # so we can update their labels in the database
+    repo = get_repo()
+    if not repo:
         return 0
-        
-    for s in signals:
-        supabase.table('github_signals').upsert({
-            'pr_number': s['pr_number'],
-            'title': s['title'],
-            'author': s['author'],
-            'type': s['type'],
-            'status': s['status'],
-            'labels': s['labels'],
-            'verified': s['verified'],
-            'url': s['url'],
-            'created_at': s.get('date', '')
-        }, on_conflict='pr_number').execute()
-        
-    return len(signals)
+    
+    all_prs = repo.get_pulls(state='all', sort='created', direction='desc')
+    
+    synced_count = 0
+    for pr in all_prs:
+        try:
+            labels = [label.name for label in pr.labels]
+            cache_key = f"{pr.number}_{pr.head.sha}_{pr.updated_at.timestamp()}"
+            pauthor, ptype = _get_pr_metadata(pr, repo, cache_key, True)
+            
+            is_verified = pr.merged or any(l.lower() in [
+                'verified', 'agnt_verified', 'approved', 'agnt verified', 
+                'zine: verified', 'zine: approved'
+            ] for l in labels)
+            
+            is_merged = pr.merged or pr.merged_at is not None
+            status = 'active' if pr.state.lower() == 'open' else ('integrated' if is_merged else 'filtered')
+            
+            signal_data = {
+                'pr_number': pr.number,
+                'title': pr.title,
+                'author': pauthor,
+                'type': ptype,
+                'status': status,
+                'labels': labels,
+                'verified': is_verified,
+                'url': pr.html_url,
+                'created_at': pr.created_at.isoformat()
+            }
+            
+            supabase.table('github_signals').upsert(signal_data, on_conflict='pr_number').execute()
+            synced_count += 1
+        except Exception as e:
+            print(f"SYNC ERROR: Failed to sync PR #{pr.number}: {e}", flush=True)
+    
+    return synced_count
 
 def sync_single_pr(pr_number):
     """Sync a single PR to the database efficiently."""
