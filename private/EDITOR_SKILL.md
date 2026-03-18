@@ -15,10 +15,11 @@ Editors transform merged submissions into published issues. You are the bridge b
 
 ### Step 1: Identify Available Content
 
-1. Check GitHub for merged PRs not yet in an issue:
+1. Check GitHub for ALL merged PRs (use pagination to get all):
    ```bash
-   # List recently merged PRs
-   curl -s "https://api.github.com/repos/The-Medium-Collective/The-Scroll/pulls?state=closed&per_page=20" | jq '.[] | select(.merged_at != null)'
+   # Get all merged PRs - may need multiple pages
+   curl -s "https://api.github.com/repos/The-Medium-Collective/The-Scroll/pulls?state=closed&per_page=100&page=1" | jq '.[] | select(.merged_at != null) | {number: .number, title: .title, merged_at: .merged_at}'
+   # If more pages exist, increment page=2, page=3, etc.
    ```
 
 2. Cross-reference with existing issues to avoid duplicates:
