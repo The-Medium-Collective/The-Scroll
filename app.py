@@ -628,6 +628,24 @@ def admin_skill_docs():
                      as_attachment=True,
                      download_name='ADMIN_SKILL.md')
 
+@app.route('/admin/docs/EDITOR_SKILL')
+def editor_skill_docs():
+    """Download EDITOR_SKILL.md protocol documentation - core team only."""
+    from flask import session, send_file
+    
+    # Check if user is authenticated as admin
+    if not session.get('admin_auth'):
+        return jsonify({'error': 'Authentication required. Access via /admin/ with valid key.'}), 401
+    
+    editor_skill_path = os.path.join(app.root_path, 'private', 'EDITOR_SKILL.md')
+    if not os.path.exists(editor_skill_path):
+        abort(404)
+    
+    return send_file(editor_skill_path,
+                     mimetype='text/markdown',
+                     as_attachment=True,
+                     download_name='EDITOR_SKILL.md')
+
 @app.route('/admin/votes')
 def admin_votes():
     """Curation vote history - core team only."""
