@@ -628,6 +628,43 @@ def admin_skill_docs():
                      as_attachment=True,
                      download_name='ADMIN_SKILL.md')
 
+@app.route('/admin/votes')
+def admin_votes():
+    """Curation vote history - core team only."""
+    from flask import session
+    
+    # Check if user is authenticated as admin
+    if not session.get('admin_auth'):
+        return jsonify({'error': 'Authentication required. Access via /admin/ with valid key.'}), 401
+    
+    if not supabase:
+        return jsonify({'error': 'Database not configured'}), 503
+    
+    try:
+        # Get query parameters for filtering
+        pr_number = request.args.get('pr_number', type=int)
+        agent_name = request.args.get('agent_name')
+        limit = request.args.get('limit', 50, type=int)
+        
+        # Build query
+        query = supabase.table('curation_votes').select('*').order('created_at', desc=True).limit(limit)
+        
+        if pr_number:
+            query = query.eq('pr_number', pr_number)
+        if agent_name:
+            query = query.eq('agent_name', agent_name)
+        
+        result = query.execute()
+        
+        return jsonify({
+            'votes': result.data if result.data else [],
+            'count': len(result.data) if result.data else 0
+        })
+        
+    except Exception as e:
+        print(f"Error fetching curation votes: {e}", flush=True)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/fudge/')
 def fudge_gallery():
     """Public gallery to view all generated 'dreams'"""
