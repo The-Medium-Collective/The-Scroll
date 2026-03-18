@@ -164,6 +164,11 @@ def get_featured_pr_numbers():
     
     return featured_prs
 
+def _filter_ignored_labels(labels):
+    """Check if PR should be filtered based on ignore labels."""
+    return 'Zine: Ignore' in labels or 'SYSTEM' in labels
+
+
 def get_repo_totals():
     """Get repository-wide PR counts."""
     try:
@@ -182,7 +187,9 @@ def get_repo_totals():
         
         merged_ignored = g.search_issues(f'{base_query} is:merged label:"Zine: Ignore"', sort='created')
         merged_ignored_count = merged_ignored.totalCount
-        integrated_count = merged_count - merged_ignored_count
+        merged_system = g.search_issues(f'{base_query} is:merged label:"SYSTEM"', sort='created')
+        merged_system_count = merged_system.totalCount
+        integrated_count = merged_count - merged_ignored_count - merged_system_count
 
         featured_prs = get_featured_pr_numbers()
         published_count = len(featured_prs)
@@ -193,15 +200,19 @@ def get_repo_totals():
         
         open_ignored = g.search_issues(f'{base_query} is:open label:"Zine: Ignore"', sort='created')
         open_ignored_count = open_ignored.totalCount
-        active_count = open_count - open_ignored_count
+        open_system = g.search_issues(f'{base_query} is:open label:"SYSTEM"', sort='created')
+        open_system_count = open_system.totalCount
+        active_count = open_count - open_ignored_count - open_system_count
         
         closed_not_merged = g.search_issues(f"{base_query} is:closed -is:merged", sort='created')
         closed_not_merged_count = closed_not_merged.totalCount
         
         closed_ignored = g.search_issues(f'{base_query} is:closed -is:merged label:"Zine: Ignore"', sort='created')
         closed_ignored_count = closed_ignored.totalCount
+        closed_system = g.search_issues(f'{base_query} is:closed -is:merged label:"SYSTEM"', sort='created')
+        closed_system_count = closed_system.totalCount
         
-        filtered_count = closed_not_merged_count - closed_ignored_count
+        filtered_count = closed_not_merged_count - closed_ignored_count - closed_system_count
         
         return {
             'integrated': integrated_count,
@@ -247,7 +258,7 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
                 break
                 
             labels = [label.name for label in pr.labels]
-            if 'Zine: Ignore' in labels:
+            if _filter_ignored_labels(labels):
                 continue
             
             if category and category in category_queries:
@@ -291,9 +302,9 @@ def get_repository_signals(limit=50, page=0, category=None, state='all'):
             published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
             integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
             
-            # Filter out "Zine: Ignore" labeled PRs from active and filtered counts
-            active_not_ignored = sum(1 for s in signals if s.get('status') == 'active' and 'Zine: Ignore' not in s.get('labels', []))
-            filtered_not_ignored = sum(1 for s in signals if s.get('status') == 'filtered' and 'Zine: Ignore' not in s.get('labels', []))
+            # Filter out "Zine: Ignore" and "SYSTEM" labeled PRs from active and filtered counts
+            active_not_ignored = sum(1 for s in signals if s.get('status') == 'active' and not _filter_ignored_labels(s.get('labels', [])))
+            filtered_not_ignored = sum(1 for s in signals if s.get('status') == 'filtered' and not _filter_ignored_labels(s.get('labels', [])))
             
             repo_totals = {
                 'integrated': integrated_val,
@@ -476,12 +487,12 @@ def get_signals_from_db():
         published_val = sum(1 for s in signals if s.get('status') == 'integrated' and s.get('pr_number') in featured_prs)
         integrated_val = sum(1 for s in signals if s.get('status') == 'integrated') - published_val
         
-        # Filter out "Zine: Ignore" labeled PRs from active and filtered counts
+        # Filter out "Zine: Ignore" and "SYSTEM" labeled PRs from active and filtered counts
         active_signals = [s for s in signals if s.get('status') == 'active']
-        active_not_ignored = [s for s in active_signals if 'Zine: Ignore' not in s.get('labels', [])]
+        active_not_ignored = [s for s in active_signals if not _filter_ignored_labels(s.get('labels', []))]
         
         filtered_signals = [s for s in signals if s.get('status') == 'filtered']
-        filtered_not_ignored = [s for s in filtered_signals if 'Zine: Ignore' not in s.get('labels', [])]
+        filtered_not_ignored = [s for s in filtered_signals if not _filter_ignored_labels(s.get('labels', []))]
         
         return signals, {
             'integrated': integrated_val,
